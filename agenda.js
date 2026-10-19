@@ -31,8 +31,12 @@
   const sameDay = (a, b) => a && b && ymd(a) === ymd(b);
   const hhmm12 = t => { const [h, m] = t.split(':').map(Number); return `${((h + 11) % 12) + 1}:${pad(m)} ${h < 12 ? 'a. m.' : 'p. m.'}`; };
 
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const last = new Date(today); last.setDate(last.getDate() + DIAS_ADELANTE);
+  let today, last;
+  const refreshWindow = () => {
+    today = new Date(); today.setHours(0, 0, 0, 0);
+    last = new Date(today); last.setDate(last.getDate() + DIAS_ADELANTE);
+  };
+  refreshWindow();
   const st = { tipo: 'Valoración inicial', sede: R.current(), date: null, time: null, month: new Date(today.getFullYear(), today.getMonth(), 1) };
 
   const slotsFor = d => {
@@ -117,7 +121,7 @@
     $('#tkAddr').textContent = s.addr;
     const d = st.date;
     $('#tkDay').textContent = d ? pad(d.getDate()) : '--';
-    $('#tkMonth').textContent = d ? `${MESES[d.getMonth()]} ${d.getFullYear()}` : 'Elige un día';
+    $('#tkMonth').textContent = d ? MESES[d.getMonth()] : 'Elige un día';
     $('#tkWeek').innerHTML = d ? DIAS[d.getDay()][0].toUpperCase() + DIAS[d.getDay()].slice(1) : '&nbsp;';
     $('#tkTime').textContent = st.time ? hhmm12(st.time) : '— : —';
     document.querySelector('.ticket').classList.toggle('full', !!(d && st.time));
@@ -224,6 +228,20 @@
     document.querySelector('.ticket').classList.remove('full', 'booked');
     paintChips(); renderCal(); renderSlots(); ticket();
   });
+
+  // Si la página queda abierta de un día para otro, la ventana de 30 días se actualiza sola
+  const dayKey = () => ymd(new Date());
+  let seen = dayKey();
+  const checkDay = () => {
+    if (dayKey() === seen) return;
+    seen = dayKey(); refreshWindow();
+    if (st.date && !dayOk(st.date)) { st.date = null; st.time = null; }
+    st.month = new Date(today.getFullYear(), today.getMonth(), 1);
+    renderCal(); renderSlots(); ticket();
+  };
+  document.addEventListener('visibilitychange', checkDay);
+  addEventListener('focus', checkDay);
+  setInterval(checkDay, 60000);
 
   paintChips(); renderCal(); renderSlots(); ticket();
 })();

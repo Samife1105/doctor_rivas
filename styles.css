@@ -210,7 +210,7 @@ em{font-style:italic}
 /* ===== AGENDAR ===== */
 .btn--lg{min-height:56px;padding:17px 34px;font-size:1rem;width:100%}
 .book{display:grid;grid-template-columns:340px 1fr;gap:28px;align-items:start}
-.ticket{position:sticky;top:96px;perspective:1100px}
+.ticket{position:sticky;top:96px;perspective:1100px;container-type:inline-size}
 .tooth__tilt{transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .25s var(--ease);transform-style:preserve-3d}
 .tooth__float{position:relative;animation:tfloat 6s ease-in-out infinite}
 @keyframes tfloat{50%{transform:translateY(-10px)}}
@@ -218,18 +218,18 @@ em{font-style:italic}
 .tooth__body{transition:fill .4s}
 .ticket.full .tooth__rim{stroke-opacity:.7}
 .tooth__content{position:absolute;left:24%;right:24%;top:13%;bottom:50%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;color:#fff;transform:translateZ(40px)}
-.tooth__brand{font-family:var(--serif);font-size:1.25rem;line-height:1}
-.ticket__kind{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:4px 10px}
-.ticket__date{display:flex;align-items:center;justify-content:center;gap:12px}
-.ticket__date b{font-family:var(--serif);font-weight:400;font-size:3.6rem;line-height:.8;letter-spacing:-.03em;min-width:1.2ch;transition:opacity .3s}
-.ticket__date div{display:grid;gap:3px;text-align:left}
-.ticket__date span:first-child{font-weight:600;font-size:.85rem}
-.ticket__date span:last-child{color:rgba(255,255,255,.6);font-size:.8rem}
+.tooth__brand{font-family:var(--serif);font-size:6.4cqw;line-height:1}
+.ticket__kind{font-size:2.7cqw;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:1.2cqw 2.8cqw;white-space:nowrap}
+.ticket__date{display:flex;align-items:center;justify-content:center;gap:3cqw}
+.ticket__date b{font-family:var(--serif);font-weight:400;font-size:17cqw;line-height:.8;letter-spacing:-.03em;min-width:1.2ch;transition:opacity .3s}
+.ticket__date div{display:grid;gap:.8cqw;text-align:left;min-width:0}
+.ticket__date span:first-child{font-weight:600;font-size:4.3cqw}
+.ticket__date span:last-child{color:rgba(255,255,255,.6);font-size:3.8cqw}
 .ticket:not(.full) .ticket__date b{opacity:.35}
-.ticket__rows{display:grid;gap:4px;width:100%;border-top:1px dashed rgba(255,255,255,.25);padding-top:8px}
+.ticket__rows{display:grid;gap:1.2cqw;width:100%;border-top:1px dashed rgba(255,255,255,.25);padding-top:2.4cqw}
 .ticket__rows div{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
-.ticket__rows dt{font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5)}
-.ticket__rows dd{font-weight:600;font-size:.88rem}
+.ticket__rows dt{font-size:2.7cqw;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.ticket__rows dd{font-weight:600;font-size:4.2cqw;white-space:nowrap}
 .tooth__addr{font-size:.82rem;color:var(--mute);line-height:1.35;text-align:center;margin-top:6px;transform:none}
 .ticket.booked .tooth__float{animation-duration:3s}
 @media (prefers-reduced-motion:reduce){.tooth__float{animation:none}.tooth__tilt{transition:none}}
