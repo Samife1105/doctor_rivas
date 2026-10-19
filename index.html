@@ -179,22 +179,34 @@
         <p class="lead">Elige la sede, el día y la hora que mejor te queden. Puedes agendar hasta con un mes de anticipación.</p>
       </div>
       <div class="book reveal" id="book">
-        <aside class="ticket" aria-live="polite" aria-label="Resumen de tu cita">
-          <div class="ticket__top">
-            <span class="ticket__brand">Dr. Rivas</span>
-            <span class="ticket__kind" id="tkKind">Valoración inicial</span>
+        <aside class="ticket tooth" aria-live="polite" aria-label="Resumen de tu cita">
+          <div class="tooth__tilt">
+            <div class="tooth__float">
+              <svg class="tooth__shape" viewBox="0 0 340 440" aria-hidden="true">
+                <defs>
+                  <linearGradient id="tBody" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2a2a"/><stop offset=".55" stop-color="#0d0d0d"/><stop offset="1" stop-color="#000"/></linearGradient>
+                  <linearGradient id="tShine" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+                  <filter id="tShadow" x="-20%" y="-10%" width="140%" height="130%"><feDropShadow dx="0" dy="26" stdDeviation="20" flood-color="#000" flood-opacity=".38"/></filter>
+                </defs>
+                <path class="tooth__body" filter="url(#tShadow)" fill="url(#tBody)" d="M48 110C40 50 100 14 140 46C158 60 182 60 200 46C240 14 300 50 292 110C288 160 270 190 266 236C262 290 276 360 262 408C256 428 232 428 228 404C222 360 206 300 170 292C134 300 118 360 112 404C108 428 84 428 78 408C64 360 78 290 74 236C70 190 52 160 48 110Z"/>
+                <path fill="url(#tShine)" d="M66 104C62 62 104 36 134 62C112 70 92 96 90 150C86 190 78 214 80 236C70 200 68 150 66 104Z"/>
+                <path class="tooth__rim" fill="none" stroke="#fff" stroke-opacity=".22" stroke-width="1.5" d="M48 110C40 50 100 14 140 46C158 60 182 60 200 46C240 14 300 50 292 110"/>
+              </svg>
+              <div class="tooth__content">
+                <span class="tooth__brand">Dr. Rivas</span>
+                <span class="ticket__kind" id="tkKind">Valoración inicial</span>
+                <div class="ticket__date">
+                  <b id="tkDay">--</b>
+                  <div><span id="tkMonth">Elige un día</span><span id="tkWeek">&nbsp;</span></div>
+                </div>
+                <dl class="ticket__rows">
+                  <div><dt>Hora</dt><dd id="tkTime">— : —</dd></div>
+                  <div><dt>Sede</dt><dd id="tkSede">Yopal</dd></div>
+                </dl>
+              </div>
+              <p class="tooth__addr" id="tkAddr">—</p>
+            </div>
           </div>
-          <div class="ticket__date">
-            <b id="tkDay">--</b>
-            <div><span id="tkMonth">Elige un día</span><span id="tkWeek">&nbsp;</span></div>
-          </div>
-          <div class="ticket__cut" aria-hidden="true"></div>
-          <dl class="ticket__rows">
-            <div><dt>Hora</dt><dd id="tkTime">— : —</dd></div>
-            <div><dt>Sede</dt><dd id="tkSede">Yopal</dd></div>
-            <div><dt>Dirección</dt><dd id="tkAddr">—</dd></div>
-          </dl>
-          <div class="ticket__code" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         </aside>
 
         <form class="book__panel" id="bookForm" novalidate autocomplete="on">

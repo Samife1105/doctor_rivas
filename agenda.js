@@ -121,13 +121,19 @@
     $('#tkWeek').innerHTML = d ? DIAS[d.getDay()][0].toUpperCase() + DIAS[d.getDay()].slice(1) : '&nbsp;';
     $('#tkTime').textContent = st.time ? hhmm12(st.time) : '— : —';
     document.querySelector('.ticket').classList.toggle('full', !!(d && st.time));
-    alignCut();
   }
-  function alignCut() {
-    const t = document.querySelector('.ticket'), c = t.querySelector('.ticket__cut');
-    t.style.setProperty('--cut', (c.offsetTop + 1) + 'px');
+
+  /* Inclinación 3D del diente con el puntero */
+  const tk = document.querySelector('.ticket');
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    tk.addEventListener('pointermove', e => {
+      const r = tk.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+      tk.style.setProperty('--ry', (x * 22).toFixed(1) + 'deg');
+      tk.style.setProperty('--rx', (-y * 18).toFixed(1) + 'deg');
+    });
+    tk.addEventListener('pointerleave', () => { tk.style.setProperty('--ry', '0deg'); tk.style.setProperty('--rx', '0deg'); });
   }
-  addEventListener('resize', alignCut);
 
   /* ---- Campo de celular: solo números ---- */
   const telEl = $('#bTel');
