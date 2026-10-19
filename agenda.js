@@ -4,19 +4,19 @@
   const $ = s => document.querySelector(s);
 
   /* ===== Configuración editable =====
-     Horarios por día de la semana (0 = domingo). Horas de INICIO de cada cita (cada 1 h).
-     Pendiente confirmar los horarios reales de cada sede con el cliente. */
-  const HORARIOS = {
-    1: ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'],
-    2: ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'],
-    3: ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'],
-    4: ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'],
-    5: ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'],
-    6: ['08:00', '09:00', '10:00', '11:00'],
-    0: []
+     Lunes a viernes 8:00-18:00 y sábados 8:00-12:00, citas cada 30 min:
+     20 citas por día entre semana (8 los sábados). Pendiente confirmar horarios reales por sede. */
+  const gen = (from, to, step = 30) => {
+    const out = [];
+    for (let m = from * 60; m < to * 60; m += step) out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+    return out;
   };
-  const DIAS_ADELANTE = 90;     // hasta cuántos días en el futuro se puede agendar
+  const HORARIOS = { 0: [], 1: gen(8, 18), 2: gen(8, 18), 3: gen(8, 18), 4: gen(8, 18), 5: gen(8, 18), 6: gen(8, 12) };
+  const DIAS_ADELANTE = 30;     // máximo un mes de anticipación
   const HORAS_ANTICIPACION = 2; // mínimo de horas antes de la cita
+  const CITAS_KEY = 'rivas.citas'; // citas ya tomadas (local, hasta conectar el backend)
+  const tomadas = () => { try { return JSON.parse(localStorage.getItem(CITAS_KEY)) || []; } catch { return []; } };
+  const guardarCita = k => { try { localStorage.setItem(CITAS_KEY, JSON.stringify([...tomadas(), k])); } catch {} };
 
   /* Aquí se conectará el correo / backend más adelante. Debe devolver una promesa. */
   async function enviarReserva(reserva) {
@@ -36,7 +36,8 @@
   const st = { tipo: 'Valoración inicial', sede: R.current(), date: null, time: null, month: new Date(today.getFullYear(), today.getMonth(), 1) };
 
   const slotsFor = d => {
-    const base = HORARIOS[d.getDay()] || [];
+    const usadas = tomadas();
+    const base = (HORARIOS[d.getDay()] || []).filter(t => !usadas.includes(`${st.sede}|${ymd(d)}|${t}`));
     if (!sameDay(d, new Date())) return base;
     const limit = new Date(Date.now() + HORAS_ANTICIPACION * 36e5);
     return base.filter(t => { const [h, m] = t.split(':').map(Number); const x = new Date(d); x.setHours(h, m, 0, 0); return x > limit; });
@@ -128,20 +129,61 @@
   }
   addEventListener('resize', alignCut);
 
+  /* ---- Campo de celular: solo números ---- */
+  const telEl = $('#bTel');
+  telEl.addEventListener('beforeinput', e => { if (e.data && /\D/.test(e.data)) e.preventDefault(); });
+  telEl.addEventListener('input', () => { telEl.value = telEl.value.replace(/\D/g, '').slice(0, 10); });
+  telEl.addEventListener('paste', e => {
+    e.preventDefault();
+    const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '').replace(/^57(?=3\d{9}$)/, '');
+    telEl.value = t.slice(0, 10);
+  });
+
+  /* ---- Correo: formato + dominio real (consulta DNS) ---- */
+  const TYPOS = { 'gmial.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gamil.com': 'gmail.com', 'gmail.co': 'gmail.com', 'gmail.con': 'gmail.com', 'hotmial.com': 'hotmail.com', 'hotmail.con': 'hotmail.com', 'outlok.com': 'outlook.com', 'yahoo.con': 'yahoo.com', 'yaho.com': 'yahoo.com' };
+  const dns = async (name, type) => {
+    const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`, { headers: { accept: 'application/dns-json' } });
+    return r.json();
+  };
+  const cache = {};
+  async function mailCheck(mail) {
+    if (!/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(mail) || /\.\./.test(mail)) return { ok: false, msg: 'Escribe un correo válido, por ejemplo nombre@gmail.com.' };
+    const dom = mail.split('@')[1];
+    if (TYPOS[dom]) return { ok: false, msg: `¿Quisiste escribir ${mail.split('@')[0]}@${TYPOS[dom]}?` };
+    if (cache[dom] !== undefined) return cache[dom];
+    try {
+      let j = await dns(dom, 'MX');
+      let ok = j.Status === 0 && Array.isArray(j.Answer) && j.Answer.some(a => a.type === 15);
+      if (!ok && j.Status === 0) { j = await dns(dom, 'A'); ok = j.Status === 0 && Array.isArray(j.Answer) && j.Answer.length > 0; }
+      return (cache[dom] = ok ? { ok: true } : { ok: false, msg: `El dominio "${dom}" no existe o no recibe correos. Revisa tu correo.` });
+    } catch { return { ok: true }; } // sin conexión al verificador: no bloquear
+  }
+  const mailEl = $('#bMail'), mailHint = $('#bMailHint');
+  mailEl.addEventListener('blur', async () => {
+    const v = mailEl.value.trim().toLowerCase();
+    mailEl.removeAttribute('aria-invalid'); mailHint.textContent = ''; mailHint.className = 'fhint full';
+    if (!v) return;
+    const r = await mailCheck(v);
+    if (r.ok) { mailHint.textContent = 'Correo verificado ✓'; mailHint.classList.add('ok'); }
+    else { mailEl.setAttribute('aria-invalid', 'true'); mailHint.textContent = r.msg; mailHint.classList.add('bad'); }
+  });
+  mailEl.addEventListener('input', () => { mailEl.removeAttribute('aria-invalid'); mailHint.textContent = ''; });
+
   /* ---- Confirmar ---- */
   const err = msg => { const e = $('#bErr'); e.textContent = msg || ''; e.hidden = !msg; };
   $('#bookForm').addEventListener('submit', async e => {
     e.preventDefault();
     if ($('#bHp').value) return; // anti-spam
-    const nombre = $('#bNombre').value.trim(), tel = $('#bTel').value.replace(/\D/g, ''), mail = $('#bMail').value.trim();
+    const nombre = $('#bNombre').value.trim(), tel = $('#bTel').value, mail = $('#bMail').value.trim().toLowerCase();
     if (!st.date || !st.time) return err('Elige el día y la hora de tu cita.');
     if (nombre.length < 3) { $('#bNombre').focus(); return err('Escribe tu nombre completo.'); }
-    if (tel.length < 7) { $('#bTel').focus(); return err('Escribe un teléfono o WhatsApp válido.'); }
-    if (mail && !/^\S+@\S+\.\S+$/.test(mail)) { $('#bMail').focus(); return err('Revisa tu correo electrónico.'); }
+    if (!/^3\d{9}$/.test(tel)) { $('#bTel').focus(); return err('Escribe tu celular con 10 números, empezando por 3 (ej. 3001234567).'); }
+    if (mail) { const r = await mailCheck(mail); if (!r.ok) { $('#bMail').focus(); return err(r.msg); } }
     if (!$('#bOk').checked) return err('Debes aceptar el uso de tus datos para continuar.');
     err('');
     const s = R.SEDES[st.sede];
     const fecha = `${DIAS[st.date.getDay()]} ${st.date.getDate()} de ${MESES[st.date.getMonth()].toLowerCase()} de ${st.date.getFullYear()}`;
+    guardarCita(`${st.sede}|${ymd(st.date)}|${st.time}`);
     const reserva = { nombre, telefono: tel, correo: mail, tipo: st.tipo, sede: s.name, fecha: ymd(st.date), hora: st.time };
     const btn = $('#bGo'); btn.disabled = true; btn.textContent = 'Confirmando…';
     try { await enviarReserva(reserva); } catch { btn.disabled = false; btn.textContent = 'Confirmar cita'; return err('No pudimos registrar tu cita. Inténtalo de nuevo o escríbenos por WhatsApp.'); }
@@ -158,7 +200,8 @@
 
   function ics(r, s) {
     const [h, m] = r.hora.split(':').map(Number);
-    const end = `${pad(h + 1)}${pad(m)}00`;
+    const em = h * 60 + m + 30;
+    const end = `${pad(Math.floor(em / 60))}${pad(em % 60)}00`;
     const body = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Dr. Rivas//Citas//ES', 'BEGIN:VEVENT',
       `UID:${r.fecha}${r.hora.replace(':', '')}@drrivas`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
       `DTSTART;TZID=America/Bogota:${r.fecha}T${pad(h)}${pad(m)}00`, `DTEND;TZID=America/Bogota:${r.fecha}T${end}`,

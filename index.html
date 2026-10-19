@@ -176,7 +176,7 @@
       <div class="sec__head reveal">
         <p class="eyebrow">Agendamiento en línea</p>
         <h2>Reserva tu cita en <em>menos de un minuto</em>.</h2>
-        <p class="lead">Elige la sede, el día y la hora que mejor te queden. Sin llamadas ni esperas.</p>
+        <p class="lead">Elige la sede, el día y la hora que mejor te queden. Puedes agendar hasta con un mes de anticipación.</p>
       </div>
       <div class="book reveal" id="book">
         <aside class="ticket" aria-live="polite" aria-label="Resumen de tu cita">
@@ -241,8 +241,9 @@
             <h3><span>4</span>Tus datos</h3>
             <div class="bfields">
               <label>Nombre completo<input id="bNombre" autocomplete="name" placeholder="Tu nombre"></label>
-              <label>Teléfono / WhatsApp<input id="bTel" type="tel" inputmode="tel" autocomplete="tel" placeholder="300 000 0000"></label>
-              <label class="full">Correo electrónico (opcional)<input id="bMail" type="email" autocomplete="email" placeholder="tucorreo@ejemplo.com"></label>
+              <label>Celular / WhatsApp (10 dígitos)<input id="bTel" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="10" autocomplete="tel-national" placeholder="3001234567"></label>
+              <label class="full">Correo electrónico (opcional)<input id="bMail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="tucorreo@gmail.com"></label>
+              <p class="fhint full" id="bMailHint" aria-live="polite"></p>
               <input class="hp" id="bHp" tabindex="-1" autocomplete="off" aria-hidden="true">
             </div>
             <label class="consent"><input type="checkbox" id="bOk"><span>Acepto que la clínica use mis datos para gestionar mi cita.</span></label>
@@ -263,23 +264,6 @@
             <button class="btn btn--line" type="button" id="doneAgain">Agendar otra cita</button>
           </div>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- HISTORIAS -->
-  <section class="sec sec--soft" id="historias">
-    <div class="wrap">
-      <div class="sec__head reveal">
-        <p class="eyebrow">Historias</p>
-        <h2>Sonrisas reales. <em>Resultados reales.</em></h2>
-        <p class="lead">Cada foto es un paciente y un tratamiento real, sin edición ni filtros. Mira las historias completas en nuestras redes.</p>
-      </div>
-      <div class="social">
-        <a class="soc reveal" href="https://www.instagram.com/doctor.rivas/" target="_blank" rel="noopener"><span>Instagram</span><b>@doctor.rivas</b><i>↗</i></a>
-        <a class="soc reveal" href="https://www.tiktok.com/@doctor.rivas" target="_blank" rel="noopener"><span>TikTok</span><b>@doctor.rivas</b><i>↗</i></a>
-        <a class="soc reveal" href="https://www.youtube.com/@docrivas" target="_blank" rel="noopener"><span>YouTube</span><b>@docrivas</b><i>↗</i></a>
-        <a class="soc reveal" href="https://www.facebook.com/DrRivasClinicasDentales" target="_blank" rel="noopener"><span>Facebook</span><b>DrRivasClinicasDentales</b><i>↗</i></a>
       </div>
     </div>
   </section>
