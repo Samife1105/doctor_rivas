@@ -22,6 +22,7 @@
       maps: 'https://maps.app.goo.gl/JvP7ubNrzSDsHJns9'
     }
   };
+  window.RIVAS = { SEDES, setSede: id => { store.set(id); setSede(id); }, waUrl: (id, msg) => `https://wa.me/${SEDES[id].wa}?text=${encodeURIComponent(msg)}`, current: () => current };
   const KEY = 'rivas.sede';
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -53,6 +54,7 @@
     $('#sMap').href = s.maps;
     $('#mapFrame').src = `https://www.google.com/maps?q=${encodeURIComponent(s.q)}&z=16&hl=es&output=embed`;
     $('#formSede').value = id;
+    document.dispatchEvent(new CustomEvent('sedechange', { detail: id }));
   }
 
   // Gate

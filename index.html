@@ -49,12 +49,13 @@
     <a href="#servicios">Tratamientos</a>
     <a href="#doctor">El doctor</a>
     <a href="#proceso">Proceso</a>
+    <a href="#agendar">Agendar</a>
     <a href="#sedes">Sedes</a>
     <a href="#contacto">Contacto</a>
   </nav>
   <div class="nav__right">
     <button class="sede-chip" id="sedeChip" aria-label="Cambiar de sede"><span class="dot"></span><b id="sedeChipName">Yopal</b><span class="chev">⌄</span></button>
-    <a class="btn btn--dark btn--sm" data-wa href="#" target="_blank" rel="noopener">Agenda tu cita</a>
+    <a class="btn btn--dark btn--sm" href="#agendar">Agenda tu cita</a>
     <button class="burger" id="burger" aria-label="Abrir menú" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
   </div>
 </header>
@@ -68,7 +69,7 @@
         <h1 class="reveal">Salud primero.<br><em>Estética después.</em></h1>
         <p class="lead reveal">Diseñamos sonrisas que se ven naturales porque empiezan por una boca sana. Diseño de sonrisa, implantes y ortodoncia invisible, con tecnología de primer nivel.</p>
         <div class="hero__cta reveal">
-          <a class="btn btn--dark" data-wa href="#" target="_blank" rel="noopener">Agenda tu consulta</a>
+          <a class="btn btn--dark" href="#agendar">Agenda tu consulta</a>
           <a class="btn btn--line" href="#servicios">Ver tratamientos</a>
         </div>
         <ul class="hero__facts reveal">
@@ -169,6 +170,103 @@
     </div>
   </section>
 
+  <!-- AGENDAR -->
+  <section class="sec sec--soft" id="agendar">
+    <div class="wrap">
+      <div class="sec__head reveal">
+        <p class="eyebrow">Agendamiento en línea</p>
+        <h2>Reserva tu cita en <em>menos de un minuto</em>.</h2>
+        <p class="lead">Elige la sede, el día y la hora que mejor te queden. Sin llamadas ni esperas.</p>
+      </div>
+      <div class="book reveal" id="book">
+        <aside class="ticket" aria-live="polite" aria-label="Resumen de tu cita">
+          <div class="ticket__top">
+            <span class="ticket__brand">Dr. Rivas</span>
+            <span class="ticket__kind" id="tkKind">Valoración inicial</span>
+          </div>
+          <div class="ticket__date">
+            <b id="tkDay">--</b>
+            <div><span id="tkMonth">Elige un día</span><span id="tkWeek">&nbsp;</span></div>
+          </div>
+          <div class="ticket__cut" aria-hidden="true"></div>
+          <dl class="ticket__rows">
+            <div><dt>Hora</dt><dd id="tkTime">— : —</dd></div>
+            <div><dt>Sede</dt><dd id="tkSede">Yopal</dd></div>
+            <div><dt>Dirección</dt><dd id="tkAddr">—</dd></div>
+          </dl>
+          <div class="ticket__code" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </aside>
+
+        <form class="book__panel" id="bookForm" novalidate autocomplete="on">
+          <div class="bstep">
+            <h3><span>1</span>Tipo de cita</h3>
+            <div class="chips" id="bTipo" role="radiogroup" aria-label="Tipo de cita">
+              <button type="button" role="radio" aria-checked="true" class="chip on" data-v="Valoración inicial">Valoración inicial<small>Recomendada</small></button>
+              <button type="button" role="radio" aria-checked="false" class="chip" data-v="Diseño de sonrisa">Diseño de sonrisa</button>
+              <button type="button" role="radio" aria-checked="false" class="chip" data-v="Implantes dentales">Implantes dentales</button>
+              <button type="button" role="radio" aria-checked="false" class="chip" data-v="Ortodoncia invisible">Ortodoncia invisible</button>
+            </div>
+            <p class="bnote">En tu primera visita el doctor revisa tu caso y define el plan de tratamiento.</p>
+          </div>
+
+          <div class="bstep">
+            <h3><span>2</span>Sede</h3>
+            <div class="chips" id="bSede" role="radiogroup" aria-label="Sede">
+              <button type="button" role="radio" class="chip" data-v="yopal">Yopal</button>
+              <button type="button" role="radio" class="chip" data-v="aguazul">Aguazul</button>
+              <button type="button" role="radio" class="chip" data-v="bogota">Bogotá</button>
+            </div>
+          </div>
+
+          <div class="bstep">
+            <h3><span>3</span>Día y hora</h3>
+            <div class="when">
+              <div class="cal" id="cal">
+                <div class="cal__head">
+                  <button type="button" class="cal__nav" id="calPrev" aria-label="Mes anterior">‹</button>
+                  <b id="calTitle">Octubre 2026</b>
+                  <button type="button" class="cal__nav" id="calNext" aria-label="Mes siguiente">›</button>
+                </div>
+                <div class="cal__dow" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+                <div class="cal__grid" id="calGrid" role="grid"></div>
+              </div>
+              <div class="slots">
+                <p class="slots__title" id="slotsTitle">Elige un día para ver los horarios</p>
+                <div id="slotsBox" class="slots__box"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bstep">
+            <h3><span>4</span>Tus datos</h3>
+            <div class="bfields">
+              <label>Nombre completo<input id="bNombre" autocomplete="name" placeholder="Tu nombre"></label>
+              <label>Teléfono / WhatsApp<input id="bTel" type="tel" inputmode="tel" autocomplete="tel" placeholder="300 000 0000"></label>
+              <label class="full">Correo electrónico (opcional)<input id="bMail" type="email" autocomplete="email" placeholder="tucorreo@ejemplo.com"></label>
+              <input class="hp" id="bHp" tabindex="-1" autocomplete="off" aria-hidden="true">
+            </div>
+            <label class="consent"><input type="checkbox" id="bOk"><span>Acepto que la clínica use mis datos para gestionar mi cita.</span></label>
+          </div>
+
+          <p class="form__err" id="bErr" role="alert" hidden></p>
+          <button class="btn btn--dark btn--lg" type="submit" id="bGo">Confirmar cita</button>
+        </form>
+
+        <div class="done" id="bDone" hidden>
+          <svg class="done__check" viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="M15 27l8 8 14-16"/></svg>
+          <h3>¡Tu cita está lista!</h3>
+          <p id="doneTxt"></p>
+          <p class="bnote">Último paso: envía la confirmación por WhatsApp para que la sede la registre en su agenda.</p>
+          <div class="done__btns">
+            <a class="btn btn--dark" id="doneWa" href="#" target="_blank" rel="noopener">Confirmar por WhatsApp</a>
+            <button class="btn btn--line" type="button" id="doneIcs">Agregar a mi calendario</button>
+            <button class="btn btn--line" type="button" id="doneAgain">Agendar otra cita</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- HISTORIAS -->
   <section class="sec sec--soft" id="historias">
     <div class="wrap">
@@ -264,5 +362,6 @@
 </a>
 
 <script src="script.js"></script>
+<script src="agenda.js"></script>
 </body>
 </html>
