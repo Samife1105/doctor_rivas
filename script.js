@@ -22,16 +22,10 @@
       maps: 'https://maps.app.goo.gl/JvP7ubNrzSDsHJns9'
     }
   };
-  window.RIVAS = { SEDES, setSede: id => { store.set(id); setSede(id); }, waUrl: (id, msg) => `https://wa.me/${SEDES[id].wa}?text=${encodeURIComponent(msg)}`, current: () => current };
-  const KEY = 'rivas.sede';
+  window.RIVAS = { SEDES, setSede: id => { chosen = true; setSede(id); }, waUrl: (id, msg) => `https://wa.me/${SEDES[id].wa}?text=${encodeURIComponent(msg)}`, current: () => current };
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   let current = 'yopal';
-
-  const store = {
-    get() { try { return localStorage.getItem(KEY); } catch { return null; } },
-    set(v) { try { localStorage.setItem(KEY, v); } catch {} }
-  };
   const waUrl = (id, msg) => `https://wa.me/${SEDES[id].wa}?text=${encodeURIComponent(msg || 'Hola, quiero más información')}`;
 
   function setSede(id) {
@@ -62,14 +56,18 @@
   const openGate = () => { gate.classList.remove('off'); document.body.classList.add('lock'); };
   const closeGate = () => { gate.classList.add('off'); document.body.classList.remove('lock'); };
   $$('.city').forEach(b => b.addEventListener('click', () => {
-    store.set(b.dataset.sede); setSede(b.dataset.sede); closeGate();
+    chosen = true; setSede(b.dataset.sede); closeGate();
   }));
   $('#sedeChip').addEventListener('click', openGate);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && store.get()) closeGate(); });
-  $$('.tabs button').forEach(b => b.addEventListener('click', () => { store.set(b.dataset.sede); setSede(b.dataset.sede); }));
+  $$('.tabs button').forEach(b => b.addEventListener('click', () => { chosen = true; setSede(b.dataset.sede); }));
 
-  const saved = store.get();
-  if (saved && SEDES[saved]) { setSede(saved); closeGate(); } else { setSede('yopal'); openGate(); }
+  // Cada vez que entra, el visitante debe elegir su sede (no se recuerda la anterior).
+  let chosen = false;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && chosen) closeGate(); });
+  setSede('yopal');
+  openGate();
+  // Al volver con el botón "atrás" (caché del navegador) también se vuelve a pedir la sede.
+  addEventListener('pageshow', e => { if (e.persisted) { chosen = false; openGate(); } });
 
   // Menú móvil
   const burger = $('#burger'), menu = $('#menu');
@@ -113,5 +111,6 @@
     if (!nombre) { f.nombre.focus(); return; }
     const msg = `Hola, soy ${nombre}. Quiero información sobre: ${f.trat.value}.` + (f.msg.value.trim() ? ` ${f.msg.value.trim()}` : '');
     window.open(waUrl(f.sede.value, msg), '_blank', 'noopener');
+    const sede = f.sede.value; f.reset(); f.sede.value = sede; $('#formErr').hidden = true; // formulario limpio tras enviar
   });
 })();

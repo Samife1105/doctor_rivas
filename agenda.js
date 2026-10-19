@@ -202,6 +202,7 @@
     $('#doneTxt').textContent = `${nombre}, te esperamos el ${fecha} a las ${hhmm12(st.time)} en la sede ${s.name} (${s.addr}). Tipo de cita: ${st.tipo}.`;
     const msg = `Hola, quiero confirmar mi cita.\nNombre: ${nombre}\nTipo: ${st.tipo}\nSede: ${s.name}\nFecha: ${fecha}\nHora: ${hhmm12(st.time)}`;
     $('#doneWa').href = R.waUrl(st.sede, msg);
+    clearForm(); // formulario limpio apenas se confirma
     $('#bookForm').hidden = true; $('#bDone').hidden = false;
     document.querySelector('.ticket').classList.add('full', 'booked');
     $('#book').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -222,9 +223,17 @@
     a.download = 'cita-dr-rivas.ics'; document.body.appendChild(a); a.click(); a.remove();
   }
 
+  function clearForm() {
+    $('#bookForm').reset();
+    mailEl.removeAttribute('aria-invalid'); mailHint.textContent = ''; mailHint.className = 'fhint full';
+    err('');
+  }
+  clearForm();
+  addEventListener('pageshow', e => { if (e.persisted) clearForm(); });
+
   $('#doneAgain').addEventListener('click', () => {
     st.date = null; st.time = null; st.tipo = 'Valoración inicial';
-    $('#bookForm').reset(); $('#bookForm').hidden = false; $('#bDone').hidden = true;
+    clearForm(); $('#bookForm').hidden = false; $('#bDone').hidden = true;
     document.querySelector('.ticket').classList.remove('full', 'booked');
     paintChips(); renderCal(); renderSlots(); ticket();
   });
