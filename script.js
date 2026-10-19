@@ -3,21 +3,21 @@
     yopal: {
       name: 'Yopal',
       addr: 'Carrera 24 con Calle 12, esquina diagonal al Edificio Luma',
-      q: 'Carrera 24 con Calle 12, Yopal, Casanare, Colombia',
+      q: '5.3472367,-72.3953272',
       phone: '+57 313 469 3232', tel: '+573134693232', wa: '573134693232',
       maps: 'https://maps.app.goo.gl/unhVyQFb4ZGxKXGC7'
     },
     aguazul: {
       name: 'Aguazul',
       addr: 'Carrera 18A #10-24',
-      q: 'Carrera 18A #10-24, Aguazul, Casanare, Colombia',
+      q: '5.1716215,-72.5505283',
       phone: '+57 320 745 1448', tel: '+573207451448', wa: '573207451448',
       maps: 'https://maps.app.goo.gl/cgvktmZMxvS944AD7'
     },
     bogota: {
       name: 'Bogotá',
       addr: 'Autopista Norte con Calle 106',
-      q: 'Autopista Norte con Calle 106, Bogotá, Colombia',
+      q: '4.695063,-74.0563214',
       phone: '+57 320 767 1072', tel: '+573207671072', wa: '573207671072',
       maps: 'https://maps.app.goo.gl/JvP7ubNrzSDsHJns9'
     }
