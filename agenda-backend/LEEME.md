@@ -1,52 +1,44 @@
 # Agenda Dr. Rivas · puesta en marcha (≈ 15 minutos)
 
-Lo que se arma aquí: cada cita que se agenda en el sitio queda como **una fila en una hoja de Google**,
-se crea un **evento en Google Calendar** de la sede (e invita al paciente si dejó su correo),
-la sede recibe un **correo de aviso** y el paciente un **recordatorio un día antes**.
-Las horas ya tomadas aparecen con candado en el sitio para todos los pacientes.
+Cada cita que se agenda en el sitio queda como **una fila en la pestaña de su sede**
+(`Citas Yopal`, `Citas Aguazul` o `Citas Bogotá`). El paciente recibe un **correo de "tu cita quedó guardada"**
+y, un día antes, un **recordatorio**. Las horas tomadas aparecen con candado en el sitio para todos.
+**No usa Google Calendar** (eso queda como servicio adicional futuro).
 
-> Hazlo con la cuenta de Google **de la clínica** (la que será dueña de la hoja, el calendario y los correos).
+> Hazlo con la cuenta de Google **de la clínica** (será la dueña de la hoja y desde donde salen los correos).
 
 ## 1. La hoja
-1. Entra a Google Drive → **Nuevo → Subir archivo** y sube `Agenda_Dr_Rivas_PLANTILLA.xlsx`.
-2. Ábrelo y elige **Abrir con → Hojas de cálculo de Google**. Luego **Archivo → Guardar como hoja de cálculo de Google**.
-3. **Archivo → Configuración**: zona horaria **(GMT-05:00) Bogotá**.
-4. En la pestaña **Configuración** completa (celdas grises):
-   - el correo de cada sede (reemplaza los `[correo-...]`),
-   - los horarios reales de cada sede,
-   - opcional: el ID de un calendario por sede (si lo dejas vacío usa el calendario principal).
+1. En Google Drive: **Nuevo → Subir archivo** → `Agenda_Dr_Rivas_PLANTILLA.xlsx`.
+2. Ábrelo y elige **Archivo → Guardar como hoja de cálculo de Google**.
+3. **Archivo → Configuración**: zona horaria **(GMT-05:00) Bogotá** → *Guardar y volver a cargar*.
+4. Pestaña **Configuración**: horarios reales de cada sede y, si quieren aviso por correo de cada cita, el correo de la sede (opcional; varios separados por coma).
 
 ## 2. El script
-1. En la hoja: **Extensiones → Apps Script**.
-2. Borra lo que haya y pega todo el contenido de `Code.gs`.
-3. (Opcional) **Configuración del proyecto → Mostrar `appsscript.json`** y pega el contenido de `appsscript.json`.
-4. Guarda. Elige la función **`instalar`** y pulsa **Ejecutar**. Google pedirá permisos
-   (Calendar, correo, hojas): acéptalos. Esto crea el recordatorio diario (8 a. m.) y el control de cancelaciones.
+1. **Extensiones → Apps Script**. Borra lo que haya y pega todo `Code.gs`.
+2. Guarda. Elige la función **`instalar`** y pulsa **Ejecutar**; acepta los permisos
+   (hoja de cálculo, enviar correos, tarea diaria). Crea las pestañas por sede y activa el recordatorio de las 8 a. m.
 
 ## 3. Publicar
-1. **Implementar → Nueva implementación → Aplicación web**.
-2. *Ejecutar como*: **Yo**. *Quién tiene acceso*: **Cualquier persona**.
-3. **Implementar** y copia la dirección que termina en **`/exec`**.
-4. Pásame esa dirección: se pega en `config.js` (`backendUrl`) y el sitio queda conectado.
+1. **Implementar → Nueva implementación → Aplicación web**. *Ejecutar como*: **Yo**. *Acceso*: **Cualquier usuario**.
+2. Copia la dirección que termina en **`/exec`** y pégala en `config.js` (`backendUrl`).
 
-## Cómo se usa el día a día
-- La recepción mira la hoja **Citas** y cambia **Estado**: Pendiente → Confirmada / Atendida / No asistió / Cancelada.
-- Al poner **Cancelada** el evento se borra del calendario y la hora vuelve a quedar libre en el sitio.
-- Los horarios, el máximo de citas por día y los correos se cambian en la pestaña **Configuración**, sin tocar el sitio.
+## Uso diario
+- Cada sede mira **su pestaña** y cambia **Estado**: Pendiente (amarillo) → Confirmada (azul) / Atendida (verde) / No asistió (gris) / Cancelada (rojo). La fila completa cambia de color.
+- **Cancelada** libera la hora en el sitio.
+- Horarios, máximo de citas por día y correos se cambian en **Configuración**, sin tocar el sitio.
 - La pestaña **Resumen** cuenta las citas por sede y estado.
 
-## Qué incluye y qué no
-- Incluye: hoja de citas, evento en calendario con invitación, correo a la sede, recordatorio por correo, horas ocupadas en el sitio, máximo por día.
-- No incluye: recordatorios por **WhatsApp** (requiere WhatsApp Business API, es un servicio de pago aparte) ni mensajes de SMS.
-- Límites gratuitos de Google: unos 100 correos al día con una cuenta gratuita (1.500 con Google Workspace). Alcanza para el volumen normal de una clínica.
-- Cualquier persona puede enviar citas a la dirección pública; el script valida todo, evita horas repetidas, limita a 3 citas pendientes por celular y respeta los topes.
+## Columnas de cada pestaña
+ID · Registrada (cuándo se agendó) · Sede · Fecha de la cita · Hora · Tipo de cita · Nombre · Celular · Correo del paciente · Estado · Notas (uso interno).
 
 ## Qué correo es cuál
-| Correo | Dónde se escribe | Para qué sirve |
+| Correo | Dónde | Para qué |
 |---|---|---|
-| **Del paciente** | En el formulario del sitio (opcional) | Recibe la **invitación de calendario** (le queda en su Google Calendar) y el **recordatorio** un día antes. |
-| **De la sede** (uno o varios) | Hoja *Configuración*, columna "Correo(s) de la sede" (separa varios con coma) | Reciben el **aviso de cada cita nueva** y, si el parámetro "Invitar a los correos de la sede" está en SI, la **invitación al evento** (la cita queda en el calendario de cada uno). |
-| **Cuenta de Google que publica el script** | La cuenta con la que se instala | Es la **dueña** del calendario donde se crean los eventos y desde donde **salen** todos los correos. Debe ser la cuenta de la clínica. |
+| **Del paciente** | Formulario del sitio (opcional) | Recibe "tu cita quedó guardada" y el recordatorio de un día antes. |
+| **De la sede** | Hoja *Configuración* (opcional, uno o varios) | Recibe el aviso de cada cita nueva. Vacío = no se avisa por correo; la sede solo mira su pestaña. |
+| **Cuenta de Google que publica el script** | La que instala | Es la **remitente**: de ahí salen todos los correos. Debe ser la de la clínica. |
 
-## Colores de la hoja *Citas*
-Pendiente = amarillo · Confirmada = azul · Atendida = verde · No asistió = gris · Cancelada = rojo suave. Toda la fila cambia de color.
+## Límites
+- Sin recordatorios por **WhatsApp** (requiere WhatsApp Business API, servicio aparte).
+- Cuentas gratuitas de Google: ~100 correos al día (1.500 con Workspace).
+- La dirección pública acepta citas de cualquiera, pero el script valida todo, evita horas repetidas y limita a 3 citas pendientes por celular.
