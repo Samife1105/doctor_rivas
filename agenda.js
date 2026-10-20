@@ -228,8 +228,11 @@
   /* ---- Correo: formato + dominio real (consulta DNS) ---- */
   const TYPOS = { 'gmial.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gamil.com': 'gmail.com', 'gmail.co': 'gmail.com', 'gmail.con': 'gmail.com', 'hotmial.com': 'hotmail.com', 'hotmail.con': 'hotmail.com', 'outlok.com': 'outlook.com', 'yahoo.con': 'yahoo.com', 'yaho.com': 'yahoo.com' };
   const dns = async (name, type) => {
-    const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`, { headers: { accept: 'application/dns-json' } });
-    return r.json();
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 3500); // sin respuesta: no bloquear la cita
+    try {
+      const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`, { headers: { accept: 'application/dns-json' }, signal: ctl.signal });
+      return await r.json();
+    } finally { clearTimeout(t); }
   };
   const cache = {};
   async function mailCheck(mail) {
@@ -256,7 +259,7 @@
   mailEl.addEventListener('input', () => { mailEl.removeAttribute('aria-invalid'); mailHint.textContent = ''; });
 
   /* ---- Confirmar ---- */
-  const err = msg => { const e = $('#bErr'); e.textContent = msg || ''; e.hidden = !msg; };
+  const err = msg => { const e = $('#bErr'); e.textContent = msg || ''; e.hidden = !msg; if (msg) e.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
   $('#bookForm').addEventListener('submit', async e => {
     e.preventDefault();
     if ($('#bHp').value) return; // anti-spam
@@ -264,8 +267,10 @@
     if (!st.date || !st.time) return err('Elige el día y la hora de tu cita.');
     if (nombre.length < 3) { $('#bNombre').focus(); return err('Escribe tu nombre completo.'); }
     if (!/^3\d{9}$/.test(tel)) { $('#bTel').focus(); return err('Escribe tu celular con 10 números, empezando por 3 (ej. 3001234567).'); }
-    if (mail) { const r = await mailCheck(mail); if (!r.ok) { $('#bMail').focus(); return err(r.msg); } }
-    if (!$('#bOk').checked) return err('Debes aceptar el uso de tus datos para continuar.');
+    const go = $('#bGo'); go.disabled = true; go.textContent = 'Revisando…';
+    const libre = () => { go.disabled = false; go.textContent = 'Confirmar cita'; };
+    if (mail) { const r = await mailCheck(mail); if (!r.ok) { libre(); $('#bMail').focus(); return err(r.msg); } }
+    if (!$('#bOk').checked) { libre(); return err('Debes aceptar el uso de tus datos para continuar.'); }
     err('');
     const s = R.SEDES[st.sede];
     const fecha = `${DIAS[st.date.getDay()]} ${st.date.getDate()} de ${MESES[st.date.getMonth()].toLowerCase()} de ${st.date.getFullYear()}`;
