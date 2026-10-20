@@ -289,22 +289,7 @@
     $('#bookForm').hidden = true; $('#bDone').hidden = false;
     document.querySelector('.ticket').classList.add('full', 'booked');
     $('#book').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    $('#doneIcs').onclick = () => ics(reserva, s);
   });
-
-  function ics(r, s) {
-    const [h, m] = r.hora.split(':').map(Number);
-    const em = h * 60 + m + 30;
-    const end = `${pad(Math.floor(em / 60))}${pad(em % 60)}00`;
-    const body = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Dr. Rivas//Citas//ES', 'BEGIN:VEVENT',
-      `UID:${r.fecha}${r.hora.replace(':', '')}@drrivas`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
-      `DTSTART;TZID=America/Bogota:${r.fecha}T${pad(h)}${pad(m)}00`, `DTEND;TZID=America/Bogota:${r.fecha}T${end}`,
-      `SUMMARY:Cita Dr. Rivas · ${r.tipo}`, `LOCATION:${s.addr}, ${s.name}`, `DESCRIPTION:Teléfono sede: ${s.phone}`,
-      'BEGIN:VALARM', 'TRIGGER:-PT2H', 'ACTION:DISPLAY', 'DESCRIPTION:Tu cita en Dr. Rivas', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([body], { type: 'text/calendar;charset=utf-8' }));
-    a.download = 'cita-dr-rivas.ics'; document.body.appendChild(a); a.click(); a.remove();
-  }
 
   function clearForm() {
     $('#bookForm').reset();

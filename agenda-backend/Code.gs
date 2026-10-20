@@ -1,22 +1,28 @@
 /**
- * AGENDA DR. RIVAS — Google Apps Script
+ * AGENDA DR. RIVAS — Google Apps Script (v4, sin calendario)
  * Se pega en la hoja de cálculo (Extensiones > Apps Script) y se publica como aplicación web.
- * Hace cinco cosas:
+ *
+ * Qué hace:
  *   1. Entrega al sitio la configuración (horarios por sede) y las horas ya ocupadas.
- *   2. Guarda cada cita nueva en la hoja "Citas" (una fila por cita).
- *   3. Crea el evento en Google Calendar de la sede e invita al paciente si dejó correo.
- *   4. Avisa por correo a la sede.
- *   5. Un día antes, recuerda la cita al paciente por correo. Si la recepción marca "Cancelada", libera la hora.
+ *   2. Guarda cada cita nueva en la pestaña de SU sede: "Citas Yopal", "Citas Aguazul" o "Citas Bogotá".
+ *   3. Le manda al paciente un correo corto: "tu cita quedó guardada" (si dejó su correo).
+ *   4. Avisa por correo a la sede (si hay un correo configurado).
+ *   5. Un día antes recuerda la cita al paciente por correo.
+ * Si la recepción marca "Cancelada", la hora queda libre de inmediato.
+ *
+ * Permisos que necesita: la hoja de cálculo, enviar correos y el recordatorio diario. Nada más.
  */
 
 const TZ = 'America/Bogota';
-const HOJA_CITAS = 'Citas';
+const HOJAS = { yopal: 'Citas Yopal', aguazul: 'Citas Aguazul', bogota: 'Citas Bogotá' };
 const HOJA_CONFIG = 'Configuración';
 const TIPOS = ['Valoración inicial', 'Diseño de sonrisa', 'Implantes dentales', 'Ortodoncia invisible'];
+const ESTADOS = ['Pendiente', 'Confirmada', 'Atendida', 'No asistió', 'Cancelada'];
 const MAX_ACTIVAS_POR_CELULAR = 3;
+const ENCABEZADOS = ['ID', 'Registrada', 'Sede', 'Fecha de la cita', 'Hora', 'Tipo de cita', 'Nombre', 'Celular', 'Correo', 'Estado', 'Notas (uso interno)'];
 
-// Columnas de "Citas" (base 1)
-const C = { ID: 1, REG: 2, SEDE: 3, FECHA: 4, HORA: 5, TIPO: 6, NOMBRE: 7, CEL: 8, MAIL: 9, ESTADO: 10, NOTAS: 11, EVENTO: 12, RECORD: 13 };
+// Columnas de cada pestaña de citas (base 1)
+const C = { ID: 1, REG: 2, SEDE: 3, FECHA: 4, HORA: 5, TIPO: 6, NOMBRE: 7, CEL: 8, MAIL: 9, ESTADO: 10, NOTAS: 11 };
 
 /* ============================== Entrada web ============================== */
 
@@ -41,8 +47,7 @@ function doPost(e) {
   let salida;
   try {
     lock.waitLock(25000);
-    const datos = JSON.parse(e.postData.contents);
-    salida = registrar_(datos);
+    salida = registrar_(JSON.parse(e.postData.contents));
   } catch (err) {
     salida = { ok: false, error: 'servidor', detalle: String(err) };
   } finally {
@@ -59,7 +64,7 @@ function json_(obj) {
 
 function leerConfig_() {
   const sh = SpreadsheetApp.getActive().getSheetByName(HOJA_CONFIG);
-  const p = sh.getRange('B4:B10').getDisplayValues().map(r => r[0]);
+  const p = sh.getRange('B4:B9').getDisplayValues().map(r => r[0]);
   const cfg = {
     dias: Number(p[0]) || 30,
     horasMin: Number(p[1]) || 2,
@@ -67,12 +72,11 @@ function leerConfig_() {
     duracion: Number(p[3]) || 30,
     remitente: p[4] || 'Clínica Dr. Rivas',
     copia: (p[5] || '').trim(),
-    invitarPersonal: !/^\s*no/i.test(p[6] || ''),   // por defecto SI
     sedes: {}
   };
-  sh.getRange('A13:F15').getDisplayValues().forEach(r => {
+  sh.getRange('A13:E15').getDisplayValues().forEach(r => {
     if (!r[0]) return;
-    cfg.sedes[r[0]] = { clave: r[0], nombre: r[1], correos: correos_(r[2]), whatsapp: r[3], calId: (r[4] || '').trim(), direccion: r[5], horarios: {} };
+    cfg.sedes[r[0]] = { clave: r[0], nombre: r[1], correos: correos_(r[2]), whatsapp: r[3], direccion: r[4], horarios: {} };
   });
   const dia = { 'Lunes': 1, 'Martes': 2, 'Miércoles': 3, 'Jueves': 4, 'Viernes': 5, 'Sábado': 6, 'Domingo': 0 };
   sh.getRange('A20:D40').getDisplayValues().forEach(r => {
@@ -88,6 +92,9 @@ function leerConfig_() {
 function correos_(txt) {
   return String(txt || '').split(/[,;\s]+/).map(s => s.trim().toLowerCase()).filter(s => correoValido_(s));
 }
+
+function correoValido_(c) { return /^[^@\s\[]+@[^@\s]+\.[^@\s]+$/.test(String(c || '')); }
+function esc_(s) { return String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
 
 function hhmm_(txt) {
   const m = String(txt || '').trim().match(/^(\d{1,2}):(\d{2})/);
@@ -116,45 +123,42 @@ function configPublica_(cfg) {
 
 function fechaTxt_(d, tz) { return Utilities.formatDate(d, tz, 'yyyyMMdd'); }
 
-function citas_() {
+/** Citas de UNA sede (lee solo su pestaña). */
+function citasDe_(sedeClave) {
   const ss = SpreadsheetApp.getActive();
-  const sh = ss.getSheetByName(HOJA_CITAS);
+  const sh = ss.getSheetByName(HOJAS[sedeClave]);
+  if (!sh) return [];
   const n = sh.getLastRow() - 1;
   if (n < 1) return [];
   const tz = ss.getSpreadsheetTimeZone();
-  const vals = sh.getRange(2, 1, n, 13).getValues();
-  const disp = sh.getRange(2, 1, n, 13).getDisplayValues();
+  const rango = sh.getRange(2, 1, n, 11);
+  const vals = rango.getValues();
+  const disp = rango.getDisplayValues();
   const out = [];
   vals.forEach((r, i) => {
     if (!(r[C.FECHA - 1] instanceof Date)) return;
     out.push({
       fila: i + 2,
-      sedeNombre: r[C.SEDE - 1],
+      sede: sedeClave,
+      id: String(r[C.ID - 1] || ''),
       fecha: fechaTxt_(r[C.FECHA - 1], tz),
       hora: hhmm_(disp[i][C.HORA - 1]),
       estado: r[C.ESTADO - 1] || 'Pendiente',
       celular: disp[i][C.CEL - 1],
       correo: String(r[C.MAIL - 1] || '').trim(),
       nombre: r[C.NOMBRE - 1],
-      tipo: r[C.TIPO - 1],
-      evento: r[C.EVENTO - 1],
-      recordatorio: r[C.RECORD - 1]
+      tipo: r[C.TIPO - 1]
     });
   });
   return out;
-}
-
-function claveDeNombre_(cfg, nombre) {
-  const k = Object.keys(cfg.sedes).filter(x => cfg.sedes[x].nombre === nombre)[0];
-  return k || '';
 }
 
 function ocupadas_(cfg, sede) {
   const hoy = fechaTxt_(new Date(), TZ);
   const ocupadas = [];
   const porDia = {};
-  citas_().forEach(c => {
-    if (c.estado === 'Cancelada' || claveDeNombre_(cfg, c.sedeNombre) !== sede || c.fecha < hoy) return;
+  citasDe_(sede).forEach(c => {
+    if (c.estado === 'Cancelada' || c.fecha < hoy) return;
     ocupadas.push(c.fecha + '|' + c.hora);
     porDia[c.fecha] = (porDia[c.fecha] || 0) + 1;
   });
@@ -175,7 +179,7 @@ function registrar_(d) {
   const fecha = String(d.fecha || '');
   const hora = String(d.hora || '');
 
-  if (!sede) return { ok: false, error: 'sede' };
+  if (!sede || !HOJAS[d.sede]) return { ok: false, error: 'sede' };
   if (nombre.length < 3 || nombre.length > 80) return { ok: false, error: 'nombre' };
   if (!/^3\d{9}$/.test(celular)) return { ok: false, error: 'celular' };
   if (correo && !/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(correo)) return { ok: false, error: 'correo' };
@@ -192,167 +196,163 @@ function registrar_(d) {
   if (franjasDia.indexOf(hora) < 0) return { ok: false, error: 'horario' };
 
   const hoy = fechaTxt_(ahora, TZ);
-  const existentes = citas_().filter(c => c.estado !== 'Cancelada');
-  if (existentes.some(c => claveDeNombre_(cfg, c.sedeNombre) === d.sede && c.fecha === fecha && c.hora === hora)) return { ok: false, error: 'hora_ocupada' };
-  if (existentes.filter(c => claveDeNombre_(cfg, c.sedeNombre) === d.sede && c.fecha === fecha).length >= cfg.maxDia) return { ok: false, error: 'dia_lleno' };
-  if (existentes.filter(c => c.celular === celular && c.fecha >= hoy).length >= MAX_ACTIVAS_POR_CELULAR) return { ok: false, error: 'demasiadas_citas' };
+  const deLaSede = citasDe_(d.sede).filter(c => c.estado !== 'Cancelada');
+  if (deLaSede.some(c => c.fecha === fecha && c.hora === hora)) return { ok: false, error: 'hora_ocupada' };
+  if (deLaSede.filter(c => c.fecha === fecha).length >= cfg.maxDia) return { ok: false, error: 'dia_lleno' };
+  let activas = 0;
+  Object.keys(HOJAS).forEach(k => { activas += citasDe_(k).filter(c => c.estado !== 'Cancelada' && c.celular === celular && c.fecha >= hoy).length; });
+  if (activas >= MAX_ACTIVAS_POR_CELULAR) return { ok: false, error: 'demasiadas_citas' };
 
-  // --- Evento en el calendario de la sede (invita al paciente si hay correo)
-  const cal = (sede.calId && CalendarApp.getCalendarById(sede.calId)) || CalendarApp.getDefaultCalendar();
-  const fin = new Date(inicio.getTime() + cfg.duracion * 60000);
-  const opciones = {
-    location: sede.nombre + ' · ' + sede.direccion,
-    description: 'Paciente: ' + nombre + '\nCelular: ' + celular + '\nTipo de cita: ' + tipo + '\nAgendada desde el sitio web.\nPara cambiar o cancelar escribe por WhatsApp a la sede.'
-  };
-  const dueno = (Session.getEffectiveUser().getEmail() || '').toLowerCase();
-  const invitados = [];
-  if (correo && correo !== dueno) invitados.push(correo);
-  if (cfg.invitarPersonal) sede.correos.forEach(c => { if (c !== dueno && invitados.indexOf(c) < 0) invitados.push(c); });
-  if (invitados.length) { opciones.guests = invitados.join(','); opciones.sendInvites = true; }
-  let evento = null;
-  try {
-    evento = cal.createEvent('Dr. Rivas · ' + nombre + ' · ' + tipo + ' (' + sede.nombre + ')', inicio, fin, opciones);
-    evento.removeAllReminders();
-    evento.addPopupReminder(60);
-  } catch (err) {
-    evento = null; // si el calendario falla, la cita igual queda guardada
-  }
-
-  // --- Fila en la hoja
+  // --- Fila en la pestaña de la sede
   const ss = SpreadsheetApp.getActive();
-  const sh = ss.getSheetByName(HOJA_CITAS);
+  const sh = ss.getSheetByName(HOJAS[d.sede]);
+  if (!sh) return { ok: false, error: 'sede' };
   const fila = sh.getLastRow() + 1;
   const id = 'C' + Utilities.formatDate(ahora, TZ, 'yyMMddHHmm') + Math.floor(100 + Math.random() * 900);
   sh.getRange(fila, C.HORA).setNumberFormat('@');
   sh.getRange(fila, C.CEL).setNumberFormat('@');
-  sh.getRange(fila, 1, 1, 13).setValues([[id, ahora, sede.nombre, new Date(y, m - 1, dd), hora, tipo, nombre, celular, correo, 'Pendiente', '', evento ? evento.getId() : '', '']]);
+  // La fecha se guarda a mediodía para que el día no cambie aunque la hoja use otra zona horaria
+  sh.getRange(fila, 1, 1, 10).setValues([[id, ahora, sede.nombre, new Date(y, m - 1, dd, 12, 0), hora, tipo, nombre, celular, correo, 'Pendiente']]);
 
-  // --- Aviso por correo a la sede
-  const destino = sede.correos.join(',');
-  if (destino) {
-    const cuando = Utilities.formatDate(inicio, TZ, "EEEE d 'de' MMMM yyyy, h:mm a");
-    MailApp.sendEmail({
-      to: destino,
-      cc: correoValido_(cfg.copia) ? cfg.copia : '',
-      name: cfg.remitente,
-      subject: 'Nueva cita · ' + sede.nombre + ' · ' + Utilities.formatDate(inicio, TZ, 'd/MM h:mm a') + ' · ' + nombre,
-      htmlBody:
-        '<p><b>Nueva cita agendada desde el sitio web</b></p>' +
-        '<p>Sede: ' + sede.nombre + '<br>Fecha y hora: ' + cuando + '<br>Tipo: ' + tipo + '<br>Paciente: ' + esc_(nombre) + '<br>Celular: ' + celular + '<br>Correo: ' + (correo || '—') + '</p>' +
-        '<p>Estado: Pendiente. Confírmala por WhatsApp y cámbiala a “Confirmada” en la hoja.</p>' +
-        '<p><a href="' + ss.getUrl() + '">Abrir la hoja de citas</a></p>'
-    });
+  const cuando = Utilities.formatDate(inicio, TZ, "EEEE d 'de' MMMM 'de' yyyy") + ' a las ' + Utilities.formatDate(inicio, TZ, 'h:mm a');
+
+  // --- Correo corto al paciente: "tu cita quedó guardada"
+  if (correo) {
+    try {
+      MailApp.sendEmail({
+        to: correo,
+        name: cfg.remitente,
+        subject: 'Tu cita quedó guardada · ' + sede.nombre,
+        htmlBody:
+          '<p>Hola ' + esc_(nombre.split(' ')[0]) + ',</p>' +
+          '<p>Tu cita quedó <b>guardada</b>:</p>' +
+          '<p><b>' + esc_(cuando) + '</b><br>Sede ' + esc_(sede.nombre) + ' · ' + esc_(sede.direccion) + '<br>Tipo de cita: ' + esc_(tipo) + '</p>' +
+          '<p>Si necesitas cambiarla, escríbenos por <a href="https://wa.me/' + sede.whatsapp + '">WhatsApp</a>.</p>' +
+          '<p>' + esc_(cfg.remitente) + '</p>'
+      });
+    } catch (err) { /* si el correo falla, la cita igual queda guardada */ }
+  }
+
+  // --- Aviso a la sede (opcional: solo si hay correo configurado)
+  if (sede.correos.length) {
+    try {
+      MailApp.sendEmail({
+        to: sede.correos.join(','),
+        cc: correoValido_(cfg.copia) ? cfg.copia : '',
+        name: cfg.remitente,
+        subject: 'Nueva cita · ' + sede.nombre + ' · ' + Utilities.formatDate(inicio, TZ, 'd/MM h:mm a') + ' · ' + nombre,
+        htmlBody:
+          '<p><b>Nueva cita agendada desde el sitio web</b></p>' +
+          '<p>Sede: ' + esc_(sede.nombre) + '<br>Fecha y hora: ' + esc_(cuando) + '<br>Tipo: ' + esc_(tipo) + '<br>Paciente: ' + esc_(nombre) + '<br>Celular: ' + celular + '<br>Correo: ' + esc_(correo || '—') + '</p>' +
+          '<p>Estado: Pendiente. Está en la pestaña “' + esc_(HOJAS[d.sede]) + '”.</p>' +
+          '<p><a href="' + ss.getUrl() + '">Abrir la hoja de citas</a></p>'
+      });
+    } catch (err) { /* ignorar */ }
   }
   return { ok: true, id: id };
 }
 
-function correoValido_(c) { return /^[^@\s\[]+@[^@\s]+\.[^@\s]+$/.test(String(c || '')); }
-function esc_(s) { return String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
-
-/* ============================== Recordatorios y cancelaciones ============================== */
+/* ============================== Recordatorio diario ============================== */
 
 /** Se ejecuta todos los días (8 a. m.): recuerda por correo las citas de mañana. */
 function enviarRecordatorios() {
   const cfg = leerConfig_();
-  const ss = SpreadsheetApp.getActive();
-  const sh = ss.getSheetByName(HOJA_CITAS);
-  const manana = new Date(Date.now() + 86400000);
-  const clave = fechaTxt_(manana, TZ);
-  citas_().forEach(c => {
-    if (c.fecha !== clave || c.recordatorio || !correoValido_(c.correo)) return;
-    if (c.estado !== 'Pendiente' && c.estado !== 'Confirmada') return;
-    const k = claveDeNombre_(cfg, c.sedeNombre);
+  const props = PropertiesService.getScriptProperties();
+  const clave = fechaTxt_(new Date(Date.now() + 86400000), TZ);
+  Object.keys(HOJAS).forEach(k => {
     const sede = cfg.sedes[k];
     if (!sede) return;
-    const wa = 'https://wa.me/' + sede.whatsapp;
-    MailApp.sendEmail({
-      to: c.correo,
-      name: cfg.remitente,
-      subject: 'Recordatorio: tu cita mañana a las ' + c.hora + ' en ' + sede.nombre,
-      htmlBody:
-        '<p>Hola ' + esc_(String(c.nombre).split(' ')[0]) + ',</p>' +
-        '<p>Te recordamos tu cita de <b>' + c.tipo + '</b> <b>mañana a las ' + c.hora + '</b> en la sede <b>' + sede.nombre + '</b> (' + esc_(sede.direccion) + ').</p>' +
-        '<p>Si no puedes asistir o quieres cambiar la hora, escríbenos por <a href="' + wa + '">WhatsApp</a>.</p>' +
-        '<p>¡Te esperamos!<br>' + esc_(cfg.remitente) + '</p>'
+    citasDe_(k).forEach(c => {
+      if (c.fecha !== clave || !c.id || !correoValido_(c.correo)) return;
+      if (c.estado !== 'Pendiente' && c.estado !== 'Confirmada') return;
+      if (props.getProperty('rec_' + c.id)) return;
+      try {
+        MailApp.sendEmail({
+          to: c.correo,
+          name: cfg.remitente,
+          subject: 'Recordatorio: tu cita mañana a las ' + c.hora + ' en ' + sede.nombre,
+          htmlBody:
+            '<p>Hola ' + esc_(String(c.nombre).split(' ')[0]) + ',</p>' +
+            '<p>Te recordamos tu cita de <b>' + esc_(c.tipo) + '</b> <b>mañana a las ' + c.hora + '</b> en la sede <b>' + esc_(sede.nombre) + '</b> (' + esc_(sede.direccion) + ').</p>' +
+            '<p>Si no puedes asistir o quieres cambiar la hora, escríbenos por <a href="https://wa.me/' + sede.whatsapp + '">WhatsApp</a>.</p>' +
+            '<p>¡Te esperamos!<br>' + esc_(cfg.remitente) + '</p>'
+        });
+        props.setProperty('rec_' + c.id, '1');
+      } catch (err) { /* ignorar */ }
     });
-    sh.getRange(c.fila, C.RECORD).setValue(new Date());
   });
 }
 
-/** Trigger instalable: si la recepción marca "Cancelada", se borra el evento y la hora queda libre. */
-function alEditar_(e) {
-  try {
-    if (!e || !e.range) return;
-    const sh = e.range.getSheet();
-    if (sh.getName() !== HOJA_CITAS || e.range.getRow() < 2 || e.range.getColumn() !== C.ESTADO) return;
-    if (String(e.value) !== 'Cancelada') return;
-    const cfg = leerConfig_();
-    const fila = e.range.getRow();
-    const idEvento = sh.getRange(fila, C.EVENTO).getValue();
-    if (!idEvento) return;
-    const k = claveDeNombre_(cfg, sh.getRange(fila, C.SEDE).getValue());
-    const calId = k && cfg.sedes[k].calId;
-    const cal = (calId && CalendarApp.getCalendarById(calId)) || CalendarApp.getDefaultCalendar();
-    const ev = cal.getEventById(idEvento);
-    if (ev) ev.deleteEvent();
-    sh.getRange(fila, C.EVENTO).setValue('');
-  } catch (err) {
-    console.error(err);
+/* ============================== Preparar la hoja ============================== */
+
+function armarHojaCitas_(sh) {
+  const n = ENCABEZADOS.length;
+  if (sh.getMaxColumns() > 12) sh.deleteColumns(13, sh.getMaxColumns() - 12);
+  sh.getRange(1, 1, 1, n).setValues([ENCABEZADOS]).setBackground('#0A0A0A').setFontColor('#FFFFFF').setFontWeight('bold').setVerticalAlignment('middle').setWrap(true);
+  sh.setRowHeight(1, 32);
+  sh.setFrozenRows(1);
+  [90, 130, 90, 110, 70, 170, 200, 110, 220, 100, 220].forEach((w, i) => sh.setColumnWidth(i + 1, w));
+  sh.getRange('B2:B1000').setNumberFormat('dd/mm/yyyy hh:mm');
+  sh.getRange('D2:D1000').setNumberFormat('dd/mm/yyyy');
+  sh.getRange('E2:E1000').setNumberFormat('@');
+  sh.getRange('H2:H1000').setNumberFormat('@');
+  sh.getRange('J2:J1000').setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(ESTADOS, true).setAllowInvalid(false).build());
+  const colores = [
+    ['Pendiente', '#FFF4CC', '#5B4B00'], ['Confirmada', '#DCEBFF', '#12365F'], ['Atendida', '#D3EFD8', '#14532D'],
+    ['No asistió', '#E6E6E6', '#6B6B6B'], ['Cancelada', '#F8D7D3', '#8A2F27']
+  ];
+  const rango = sh.getRange('A2:K1000');
+  sh.setConditionalFormatRules(colores.map(c => SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=$J2="' + c[0] + '"').setBackground(c[1]).setFontColor(c[2]).setRanges([rango]).build()));
+}
+
+/**
+ * Crea (si faltan) las pestañas "Citas Yopal", "Citas Aguazul" y "Citas Bogotá" con su formato,
+ * y deja la hoja Configuración en su versión sin calendario. Se puede ejecutar varias veces.
+ */
+function prepararHoja() {
+  const ss = SpreadsheetApp.getActive();
+  Object.keys(HOJAS).forEach((k, i) => {
+    let sh = ss.getSheetByName(HOJAS[k]);
+    if (!sh) sh = ss.insertSheet(HOJAS[k], i + 1);
+    armarHojaCitas_(sh);
+  });
+
+  // Hoja "Citas" antigua (una sola para todas las sedes): se elimina si quedó de la versión anterior
+  const vieja = ss.getSheetByName('Citas');
+  if (vieja) ss.deleteSheet(vieja);
+
+  // Configuración sin calendario: se quita el parámetro de invitaciones y la columna del calendario
+  const cf = ss.getSheetByName(HOJA_CONFIG);
+  if (cf) {
+    if (/Invitar/i.test(String(cf.getRange('A10').getValue()))) cf.getRange('A10:B10').clearContent().setBackground(null);
+    if (/calendario/i.test(String(cf.getRange('E12').getValue()))) cf.deleteColumn(5);   // la dirección pasa a la columna E
+    cf.getRange('C12').setValue('Correo(s) de la sede para el aviso de cada cita (opcional; separa varios con coma)');
+  }
+
+  // Resumen por sede
+  const rs = ss.getSheetByName('Resumen');
+  if (rs) {
+    Object.keys(HOJAS).forEach((k, i) => {
+      ESTADOS.forEach((e, j) => rs.getRange(4 + i, 2 + j).setFormula("=COUNTIF('" + HOJAS[k] + "'!$J$2:$J$1000," + rs.getRange(3, 2 + j).getA1Notation() + ")"));
+    });
+    const hoy = Object.keys(HOJAS).map(k => "COUNTIFS('" + HOJAS[k] + "'!$D$2:$D$1000,TODAY(),'" + HOJAS[k] + "'!$J$2:$J$1000,\"<>Cancelada\")").join('+');
+    const man = Object.keys(HOJAS).map(k => "COUNTIFS('" + HOJAS[k] + "'!$D$2:$D$1000,TODAY()+1,'" + HOJAS[k] + "'!$J$2:$J$1000,\"<>Cancelada\")").join('+');
+    rs.getRange('B8').setFormula('=' + hoy);
+    rs.getRange('B9').setFormula('=' + man);
   }
 }
 
 /* ============================== Instalación (se ejecuta una sola vez) ============================== */
 
-/** Ejecuta esta función una vez: pide permisos y crea el recordatorio diario y el control de cancelaciones. */
+/** Ejecuta esta función una vez: prepara la hoja y activa el recordatorio diario. */
 function instalar() {
-  CalendarApp.getDefaultCalendar();                 // fuerza el permiso de Calendar
   MailApp.getRemainingDailyQuota();                 // fuerza el permiso de correo
   ScriptApp.getProjectTriggers().forEach(t => {
     const f = t.getHandlerFunction();
-    if (f === 'enviarRecordatorios' || f === 'alEditar_') ScriptApp.deleteTrigger(t);
+    if (f === 'enviarRecordatorios' || f === 'alEditar_') ScriptApp.deleteTrigger(t);   // limpia lo de versiones anteriores
   });
   ScriptApp.newTrigger('enviarRecordatorios').timeBased().atHour(8).everyDays(1).inTimezone(TZ).create();
-  ScriptApp.newTrigger('alEditar_').forSpreadsheet(SpreadsheetApp.getActive()).onEdit().create();
-  formatoCitas();
-  console.log('Listo: formato por estado, recordatorios diarios (8 a. m.) y control de cancelaciones instalados.');
-}
-
-
-/* ============================== Formato de la hoja ============================== */
-
-/**
- * Colorea la fila completa según el estado y deja la lista desplegable de estados.
- * Se ejecuta sola dentro de instalar(); también se puede ejecutar a mano.
- */
-function formatoCitas() {
-  const ss = SpreadsheetApp.getActive();
-  const sh = ss.getSheetByName(HOJA_CITAS);
-  const rango = sh.getRange('A2:M1000');
-  const colores = [
-    ['Pendiente',  '#FFF4CC', '#5B4B00'],   // amarillo suave
-    ['Confirmada', '#DCEBFF', '#12365F'],   // azul suave
-    ['Atendida',   '#D3EFD8', '#14532D'],   // verde
-    ['No asistió', '#E6E6E6', '#6B6B6B'],   // gris
-    ['Cancelada',  '#F8D7D3', '#8A2F27']    // rojo suave
-  ];
-  const reglas = colores.map(c => SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$J2="' + c[0] + '"')
-    .setBackground(c[1]).setFontColor(c[2]).setRanges([rango]).build());
-  sh.setConditionalFormatRules(reglas);
-
-  const lista = SpreadsheetApp.newDataValidation()
-    .requireValueInList(colores.map(c => c[0]), true).setAllowInvalid(false).build();
-  sh.getRange('J2:J1000').setDataValidation(lista);
-  sh.getRange('D2:D1000').setNumberFormat('dd/mm/yyyy');
-  sh.getRange('B2:B1000').setNumberFormat('dd/mm/yyyy hh:mm');
-  sh.getRange('E2:E1000').setNumberFormat('@');
-  sh.getRange('H2:H1000').setNumberFormat('@');
-
-  // Parámetro nuevo en Configuración (si falta)
-  const cf = ss.getSheetByName(HOJA_CONFIG);
-  if (!cf.getRange('A10').getValue()) {
-    cf.getRange('A10').setValue('Invitar a los correos de la sede al evento de calendario (SI/NO)');
-    cf.getRange('B10').setValue('SI').setBackground('#EFECE5');
-  }
-  cf.getRange('C12').setValue('Correo(s) de la sede: reciben el aviso de cada cita y la invitación de calendario (separa varios con coma)');
+  prepararHoja();
+  console.log('Listo: pestañas por sede preparadas y recordatorio diario (8 a. m.) activo.');
 }
