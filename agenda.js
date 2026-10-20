@@ -24,9 +24,9 @@
   const BACKEND = ((window.RIVAS_CONFIG || {}).backendUrl || '').trim();
   const remote = { cfg: null, taken: {}, full: {}, ok: false };
 
-  async function pedir(url, opts) {
+  async function pedir(url, opts, ms = 9000) {
     const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 9000);
+    const t = setTimeout(() => ctl.abort(), ms);
     try { const r = await fetch(url, { ...opts, signal: ctl.signal }); return await r.json(); }
     finally { clearTimeout(t); }
   }
@@ -61,7 +61,7 @@
 
   async function enviarReserva(p) {
     if (!BACKEND) { guardarCita(`${p.sede}|${p.fecha}|${p.hora}`); return { ok: true, local: true }; }
-    return pedir(BACKEND, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(p) });
+    return pedir(BACKEND, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(p) }, 30000); // en datos móviles, guardar y enviar el correo puede tardar
   }
   const MENSAJES = {
     hora_ocupada: 'Esa hora acaba de ser tomada por otra persona. Elige otra, por favor.',
