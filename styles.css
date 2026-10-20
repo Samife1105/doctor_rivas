@@ -1,14 +1,14 @@
 :root{
-  --ink:#0a0a0a; --on-ink:#ffffff; --ink2:#1a1a1a; --paper:#f8f6f1; --soft:#efece5; --card:#fdfcf9; --line:#e0dcd2; --mute:#66645e;
-  --nav-bg:rgba(248,246,241,.88); --ph1:#dcdbd7; --ph2:#ecebe8; --tb1:#2a2a2a; --tb2:#0d0d0d; --tb3:#000;
+  --ink:#2b2a26; --on-ink:#f7f4ee; --ink2:#3a3833; --paper:#f4f1ea; --soft:#e8e3d9; --card:#faf8f3; --line:#d8d2c5; --mute:#6a645a; --accent:#4b655f;
+  --nav-bg:rgba(244,241,234,.88); --ph1:#ddd7ca; --ph2:#eae5da; --tb1:#4a4741; --tb2:#33312d; --tb3:#262421;
   --serif:'Instrument Serif',Georgia,serif; --sans:'Inter',system-ui,sans-serif;
   --r:20px; --ease:cubic-bezier(.23,1,.32,1);
 }
 /* Tema oscuro: los blancos pasan a negro y los negros a blanco */
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --ink:#f3f1ec; --on-ink:#0a0a0a; --ink2:#e4e2dd; --paper:#0b0b0b; --soft:#131313; --card:#171717; --line:#2a2a28; --mute:#a3a19b;
-  --nav-bg:rgba(11,11,11,.86); --ph1:#1c1c1b; --ph2:#262625; --tb1:#ffffff; --tb2:#efede8; --tb3:#d9d6cf;
+  --ink:#ece7dd; --on-ink:#232220; --ink2:#ddd7ca; --paper:#1f1e1c; --soft:#272522; --card:#2d2b28; --line:#403d38; --mute:#a8a195; --accent:#9db3aa;
+  --nav-bg:rgba(31,30,28,.86); --ph1:#2a2825; --ph2:#34312d; --tb1:#f4efe4; --tb2:#e6dfd0; --tb3:#d3cab6;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;scroll-padding-top:84px}
@@ -17,7 +17,8 @@ body.lock{overflow:hidden}
 img,svg{display:block;max-width:100%}
 a{color:inherit;text-decoration:none}
 button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
-:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+::selection{background:color-mix(in srgb,var(--accent) 32%,transparent)}
 .sec--dark :focus-visible,.gate :focus-visible,.foot :focus-visible{outline-color:var(--on-ink)}
 .skip{position:absolute;left:-999px;top:8px;background:var(--ink);color:var(--on-ink);padding:8px 14px;border-radius:8px;z-index:200}
 .skip:focus{left:8px}
@@ -28,7 +29,7 @@ h1{font-size:clamp(3rem,8vw,6.2rem)}
 h2{font-size:clamp(2.2rem,5vw,3.8rem)}
 h3{font-size:1.7rem}
 em{font-style:italic}
-.eyebrow{font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:var(--mute);margin-bottom:18px}
+.eyebrow{font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;font-weight:600;color:var(--accent);margin-bottom:18px}
 .eyebrow--lt{color:color-mix(in srgb,var(--on-ink) 60%,transparent)}
 .lead{font-size:1.125rem;color:var(--mute);max-width:56ch;margin-top:22px}
 .lead--lt{color:color-mix(in srgb,var(--on-ink) 72%,transparent)}
@@ -514,3 +515,11 @@ em{font-style:italic}
 .slots__legend{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--mute);margin-top:12px}
 .day.lleno{position:relative}
 .day.lleno::after{content:"";position:absolute;left:50%;bottom:5px;width:14px;height:2px;border-radius:2px;background:currentColor;transform:translateX(-50%);opacity:.5}
+
+/* ===== Paleta suave: acentos en verde salvia ===== */
+.stars{color:var(--accent)}
+.smile{stroke:var(--accent)}
+.day.today::after{background:var(--accent)}
+.card:hover .card__n,.card:hover .eyebrow{color:color-mix(in srgb,var(--on-ink) 60%,transparent)}
+.sec--dark .eyebrow:not(.eyebrow--lt){color:color-mix(in srgb,var(--on-ink) 60%,transparent)}
+.sedes-strip__tag,.gmark{background:var(--ink)}

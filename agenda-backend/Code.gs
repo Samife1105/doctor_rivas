@@ -166,6 +166,70 @@ function ocupadas_(cfg, sede) {
   return { ok: true, ocupadas: ocupadas, llenos: llenos };
 }
 
+/* ============================== Correos en formato tarjeta ============================== */
+
+const MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const DIAS_ES = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+function hora12_(hhmm) {
+  const h = Number(hhmm.slice(0, 2)), m = hhmm.slice(3, 5);
+  return (((h + 11) % 12) + 1) + ':' + m + ' ' + (h < 12 ? 'a. m.' : 'p. m.');
+}
+function fechaLarga_(y, m, d) {
+  return DIAS_ES[new Date(y, m - 1, d, 12).getDay()] + ' ' + d + ' de ' + MESES_ES[m - 1] + ' de ' + y;
+}
+function mapsUrl_(sede) {
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('Dr. Rivas ' + sede.nombre + ' ' + sede.direccion);
+}
+
+/**
+ * Tarjeta de correo (HTML con tablas y estilos en línea, compatible con Gmail, Outlook y celulares).
+ * o = { kicker, saludo, titulo, y, m, d, hora, filas:[[etiqueta, valorHTML]], botones:[{txt,url,oscuro}], pie, id }
+ */
+function tarjeta_(o) {
+  const INK = '#2b2a26', PAPER = '#ebe6dc', CARD = '#faf8f3', LINE = '#d8d2c5', MUTE = '#6a645a', ACC = '#4b655f', ON = '#f7f4ee';
+  const SANS = "Arial,Helvetica,sans-serif", SERIF = "Georgia,'Times New Roman',serif";
+  const filas = (o.filas || []).map(f =>
+    '<tr><td style="padding:10px 0;border-bottom:1px solid #e4dfd3;font:600 11px ' + SANS + ';letter-spacing:1.4px;text-transform:uppercase;color:' + MUTE + ';width:34%;vertical-align:top">' + esc_(f[0]) + '</td>' +
+    '<td style="padding:10px 0 10px 12px;border-bottom:1px solid #e4dfd3;font:600 15px/1.4 ' + SANS + ';color:' + INK + '">' + f[1] + '</td></tr>').join('');
+  const botones = (o.botones || []).map(b =>
+    '<a href="' + b.url + '" style="display:inline-block;margin:0 8px 10px 0;padding:13px 24px;border-radius:999px;font:700 14px ' + SANS + ';text-decoration:none;' +
+    (b.oscuro ? 'background:' + INK + ';color:' + ON + ';border:2px solid ' + INK : 'background:transparent;color:' + INK + ';border:2px solid ' + INK) + '">' + esc_(b.txt) + '</a>').join('');
+  const fechaBloque =
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:6px 0 20px"><tr>' +
+    '<td style="font:400 74px/1 ' + SERIF + ';color:' + INK + ';padding:0 16px 0 0;white-space:nowrap">' + (o.d < 10 ? '0' + o.d : o.d) + '</td>' +
+    '<td style="padding:0 18px 0 0;vertical-align:middle"><div style="font:700 17px ' + SANS + ';color:' + INK + ';text-transform:capitalize">' + MESES_ES[o.m - 1] + ' ' + o.y + '</div>' +
+    '<div style="font:400 14px ' + SANS + ';color:' + MUTE + ';text-transform:capitalize;margin-top:3px">' + DIAS_ES[new Date(o.y, o.m - 1, o.d, 12).getDay()] + '</div></td>' +
+    '<td align="right" style="vertical-align:middle"><span style="display:inline-block;background:' + INK + ';color:' + ON + ';font:700 18px ' + SANS + ';padding:12px 18px;border-radius:14px;white-space:nowrap">' + esc_(hora12_(o.hora)) + '</span></td>' +
+    '</tr></table>';
+  return '' +
+    '<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">' + esc_(o.titulo) + ' · ' + esc_(fechaLarga_(o.y, o.m, o.d)) + ' · ' + esc_(hora12_(o.hora)) + '</div>' +
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="' + PAPER + '" style="background:' + PAPER + '"><tr><td align="center" style="padding:28px 12px">' +
+    '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="width:100%;max-width:560px;background:' + CARD + ';border:1px solid ' + LINE + ';border-radius:22px;overflow:hidden">' +
+    // encabezado
+    '<tr><td bgcolor="' + INK + '" style="background:' + INK + ';padding:22px 28px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
+    '<td style="font:400 28px ' + SERIF + ';color:' + ON + '">Dr. Rivas<div style="font:600 10px ' + SANS + ';letter-spacing:3px;color:#b9b2a5;margin-top:4px;text-transform:uppercase">Odontología &amp; Estética</div></td>' +
+    '<td align="right" style="vertical-align:middle"><span style="display:inline-block;border:1px solid #6b665c;color:' + ON + ';font:700 10px ' + SANS + ';letter-spacing:2px;text-transform:uppercase;padding:7px 14px;border-radius:999px">' + esc_(o.kicker) + '</span></td>' +
+    '</tr></table></td></tr>' +
+    // cuerpo
+    '<tr><td style="padding:30px 28px 8px">' +
+    (o.saludo ? '<div style="font:600 12px ' + SANS + ';letter-spacing:2px;text-transform:uppercase;color:' + ACC + ';margin-bottom:8px">' + esc_(o.saludo) + '</div>' : '') +
+    '<div style="font:400 32px/1.15 ' + SERIF + ';color:' + INK + ';margin-bottom:22px">' + esc_(o.titulo) + '</div>' +
+    fechaBloque +
+    '</td></tr>' +
+    // perforación tipo ticket
+    '<tr><td style="padding:0 28px"><div style="border-top:2px dashed #cfc8b9;height:0;line-height:0;font-size:0">&nbsp;</div></td></tr>' +
+    '<tr><td style="padding:10px 28px 6px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' + filas + '</table></td></tr>' +
+    '<tr><td style="padding:22px 28px 6px">' + botones + '</td></tr>' +
+    '<tr><td style="padding:10px 28px 26px;font:400 13px/1.55 ' + SANS + ';color:' + MUTE + '">' + (o.pie || '') + (o.id ? '<div style="margin-top:10px;font-size:11px;letter-spacing:1.2px;color:#8d867a">CITA ' + esc_(o.id) + '</div>' : '') + '</td></tr>' +
+    '</table></td></tr></table>';
+}
+
+function datosFecha_(fecha) {   // 'yyyyMMdd' -> {y, m, d}
+  return { y: Number(fecha.slice(0, 4)), m: Number(fecha.slice(4, 6)), d: Number(fecha.slice(6, 8)) };
+}
+
 /* ============================== Registrar una cita ============================== */
 
 function registrar_(d) {
@@ -214,38 +278,45 @@ function registrar_(d) {
   // La fecha se guarda a mediodía para que el día no cambie aunque la hoja use otra zona horaria
   sh.getRange(fila, 1, 1, 10).setValues([[id, ahora, sede.nombre, new Date(y, m - 1, dd, 12, 0), hora, tipo, nombre, celular, correo, 'Pendiente']]);
 
-  const cuando = Utilities.formatDate(inicio, TZ, "EEEE d 'de' MMMM 'de' yyyy") + ' a las ' + Utilities.formatDate(inicio, TZ, 'h:mm a');
+  const f = { y: y, m: m, d: dd };
+  const cuando = fechaLarga_(y, m, dd) + ' a las ' + hora12_(hora);
+  const wa = 'https://wa.me/' + sede.whatsapp;
 
-  // --- Correo corto al paciente: "tu cita quedó guardada"
+  // --- Correo al paciente: tarjeta "tu cita quedó guardada"
   if (correo) {
     try {
       MailApp.sendEmail({
         to: correo,
         name: cfg.remitente,
-        subject: 'Tu cita quedó guardada · ' + sede.nombre,
-        htmlBody:
-          '<p>Hola ' + esc_(nombre.split(' ')[0]) + ',</p>' +
-          '<p>Tu cita quedó <b>guardada</b>:</p>' +
-          '<p><b>' + esc_(cuando) + '</b><br>Sede ' + esc_(sede.nombre) + ' · ' + esc_(sede.direccion) + '<br>Tipo de cita: ' + esc_(tipo) + '</p>' +
-          '<p>Si necesitas cambiarla, escríbenos por <a href="https://wa.me/' + sede.whatsapp + '">WhatsApp</a>.</p>' +
-          '<p>' + esc_(cfg.remitente) + '</p>'
+        subject: 'Tu cita quedó guardada · ' + sede.nombre + ' · ' + dd + ' de ' + MESES_ES[m - 1],
+        htmlBody: tarjeta_({
+          kicker: 'Cita guardada', saludo: 'Hola ' + nombre.split(' ')[0], titulo: 'Tu cita quedó guardada',
+          y: y, m: m, d: dd, hora: hora, id: id,
+          filas: [['Sede', esc_(sede.nombre)], ['Dirección', esc_(sede.direccion)], ['Tipo de cita', esc_(tipo)], ['Paciente', esc_(nombre)]],
+          botones: [{ txt: 'Avisar por WhatsApp', url: wa + '?text=' + encodeURIComponent('Hola, tengo una cita el ' + cuando + ' en la sede ' + sede.nombre + '.'), oscuro: true },
+                    { txt: 'Cómo llegar', url: mapsUrl_(sede) }],
+          pie: 'Si necesitas cambiar o cancelar tu cita, escríbenos por WhatsApp. ¡Te esperamos!'
+        })
       });
     } catch (err) { /* si el correo falla, la cita igual queda guardada */ }
   }
 
-  // --- Aviso a la sede (opcional: solo si hay correo configurado)
+  // --- Aviso a la sede (opcional: solo si hay correo configurado): tarjeta "nueva cita"
   if (sede.correos.length) {
     try {
       MailApp.sendEmail({
         to: sede.correos.join(','),
         cc: correoValido_(cfg.copia) ? cfg.copia : '',
         name: cfg.remitente,
-        subject: 'Nueva cita · ' + sede.nombre + ' · ' + Utilities.formatDate(inicio, TZ, 'd/MM h:mm a') + ' · ' + nombre,
-        htmlBody:
-          '<p><b>Nueva cita agendada desde el sitio web</b></p>' +
-          '<p>Sede: ' + esc_(sede.nombre) + '<br>Fecha y hora: ' + esc_(cuando) + '<br>Tipo: ' + esc_(tipo) + '<br>Paciente: ' + esc_(nombre) + '<br>Celular: ' + celular + '<br>Correo: ' + esc_(correo || '—') + '</p>' +
-          '<p>Estado: Pendiente. Está en la pestaña “' + esc_(HOJAS[d.sede]) + '”.</p>' +
-          '<p><a href="' + ss.getUrl() + '">Abrir la hoja de citas</a></p>'
+        subject: 'Nueva cita · ' + sede.nombre + ' · ' + dd + '/' + (m < 10 ? '0' + m : m) + ' ' + hora12_(hora) + ' · ' + nombre,
+        htmlBody: tarjeta_({
+          kicker: 'Nueva cita', saludo: sede.nombre, titulo: 'Nueva cita agendada',
+          y: y, m: m, d: dd, hora: hora, id: id,
+          filas: [['Paciente', esc_(nombre)], ['Celular', '<a href="https://wa.me/57' + celular + '" style="color:#2b2a26">' + celular + '</a>'], ['Correo', esc_(correo || '—')],
+                  ['Tipo de cita', esc_(tipo)], ['Estado', 'Pendiente'], ['Pestaña', esc_(HOJAS[d.sede])]],
+          botones: [{ txt: 'Escribir al paciente', url: 'https://wa.me/57' + celular, oscuro: true }, { txt: 'Abrir la hoja', url: ss.getUrl() }],
+          pie: 'Cuando la confirmes, cambia el estado en la hoja. Si pones “Cancelada”, la hora queda libre.'
+        })
       });
     } catch (err) { /* ignorar */ }
   }
@@ -267,15 +338,18 @@ function enviarRecordatorios() {
       if (c.estado !== 'Pendiente' && c.estado !== 'Confirmada') return;
       if (props.getProperty('rec_' + c.id)) return;
       try {
+        const f = datosFecha_(c.fecha);
         MailApp.sendEmail({
           to: c.correo,
           name: cfg.remitente,
-          subject: 'Recordatorio: tu cita mañana a las ' + c.hora + ' en ' + sede.nombre,
-          htmlBody:
-            '<p>Hola ' + esc_(String(c.nombre).split(' ')[0]) + ',</p>' +
-            '<p>Te recordamos tu cita de <b>' + esc_(c.tipo) + '</b> <b>mañana a las ' + c.hora + '</b> en la sede <b>' + esc_(sede.nombre) + '</b> (' + esc_(sede.direccion) + ').</p>' +
-            '<p>Si no puedes asistir o quieres cambiar la hora, escríbenos por <a href="https://wa.me/' + sede.whatsapp + '">WhatsApp</a>.</p>' +
-            '<p>¡Te esperamos!<br>' + esc_(cfg.remitente) + '</p>'
+          subject: 'Recordatorio: tu cita mañana a las ' + hora12_(c.hora) + ' en ' + sede.nombre,
+          htmlBody: tarjeta_({
+            kicker: 'Recordatorio', saludo: 'Hola ' + String(c.nombre).split(' ')[0], titulo: 'Tu cita es mañana',
+            y: f.y, m: f.m, d: f.d, hora: c.hora, id: c.id,
+            filas: [['Sede', esc_(sede.nombre)], ['Dirección', esc_(sede.direccion)], ['Tipo de cita', esc_(c.tipo)]],
+            botones: [{ txt: 'Cambiar por WhatsApp', url: 'https://wa.me/' + sede.whatsapp, oscuro: true }, { txt: 'Cómo llegar', url: mapsUrl_(sede) }],
+            pie: 'Si no puedes asistir, avísanos por WhatsApp para liberar la hora. ¡Te esperamos!'
+          })
         });
         props.setProperty('rec_' + c.id, '1');
       } catch (err) { /* ignorar */ }
@@ -341,6 +415,32 @@ function prepararHoja() {
     rs.getRange('B8').setFormula('=' + hoy);
     rs.getRange('B9').setFormula('=' + man);
   }
+}
+
+/** Envía tres correos de muestra (paciente, sede y recordatorio) a la dirección "copia interna" de Configuración. */
+function probarCorreos() {
+  const cfg = leerConfig_();
+  const destino = cfg.copia;
+  if (!correoValido_(destino)) { console.log('Escribe un correo en Configuración > "Correo interno que recibe copia" y vuelve a ejecutar.'); return; }
+  const sede = cfg.sedes.yopal;
+  const hoy = new Date(Date.now() + 2 * 86400000);
+  const base = { y: hoy.getFullYear(), m: hoy.getMonth() + 1, d: hoy.getDate(), hora: '10:30', id: 'C-EJEMPLO' };
+  const filas = [['Sede', esc_(sede.nombre)], ['Dirección', esc_(sede.direccion)], ['Tipo de cita', 'Diseño de sonrisa'], ['Paciente', 'Laura Gómez']];
+  const wa = 'https://wa.me/' + sede.whatsapp;
+  MailApp.sendEmail({ to: destino, name: cfg.remitente, subject: '[Muestra 1/3] Tu cita quedó guardada', htmlBody: tarjeta_(Object.assign({}, base, {
+    kicker: 'Cita guardada', saludo: 'Hola Laura', titulo: 'Tu cita quedó guardada', filas: filas,
+    botones: [{ txt: 'Avisar por WhatsApp', url: wa, oscuro: true }, { txt: 'Cómo llegar', url: mapsUrl_(sede) }],
+    pie: 'Si necesitas cambiar o cancelar tu cita, escríbenos por WhatsApp. ¡Te esperamos!' })) });
+  MailApp.sendEmail({ to: destino, name: cfg.remitente, subject: '[Muestra 2/3] Nueva cita · ' + sede.nombre, htmlBody: tarjeta_(Object.assign({}, base, {
+    kicker: 'Nueva cita', saludo: sede.nombre, titulo: 'Nueva cita agendada',
+    filas: [['Paciente', 'Laura Gómez'], ['Celular', '3001234567'], ['Correo', 'laura@correo.com'], ['Tipo de cita', 'Diseño de sonrisa'], ['Estado', 'Pendiente'], ['Pestaña', 'Citas Yopal']],
+    botones: [{ txt: 'Escribir al paciente', url: 'https://wa.me/573001234567', oscuro: true }, { txt: 'Abrir la hoja', url: SpreadsheetApp.getActive().getUrl() }],
+    pie: 'Cuando la confirmes, cambia el estado en la hoja. Si pones “Cancelada”, la hora queda libre.' })) });
+  MailApp.sendEmail({ to: destino, name: cfg.remitente, subject: '[Muestra 3/3] Recordatorio de tu cita', htmlBody: tarjeta_(Object.assign({}, base, {
+    kicker: 'Recordatorio', saludo: 'Hola Laura', titulo: 'Tu cita es mañana', filas: filas.slice(0, 3),
+    botones: [{ txt: 'Cambiar por WhatsApp', url: wa, oscuro: true }, { txt: 'Cómo llegar', url: mapsUrl_(sede) }],
+    pie: 'Si no puedes asistir, avísanos por WhatsApp para liberar la hora. ¡Te esperamos!' })) });
+  console.log('Enviados 3 correos de muestra a ' + destino);
 }
 
 /* ============================== Instalación (se ejecuta una sola vez) ============================== */
