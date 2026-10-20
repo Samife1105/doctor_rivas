@@ -47,8 +47,8 @@
   <a class="logo" href="#inicio" aria-label="Dr. Rivas, inicio">Dr. Rivas<small>Odontología &amp; Estética</small></a>
   <nav class="nav__links" id="menu" aria-label="Principal">
     <a href="#servicios">Tratamientos</a>
+    <a href="#resultados">Resultados</a>
     <a href="#doctor">El doctor</a>
-    <a href="#proceso">Proceso</a>
     <a href="#agendar">Agendar</a>
     <a href="#sedes">Sedes</a>
     <a href="#contacto">Contacto</a>
@@ -92,6 +92,8 @@
           <span class="tag tag--a">Diseño de sonrisa</span>
           <span class="tag tag--b">Implantes</span>
           <span class="tag tag--c">Ortodoncia invisible</span>
+          <svg class="spark spark--1" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12 7-1 11-5 12-12z"/></svg>
+          <svg class="spark spark--2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12 7-1 11-5 12-12z"/></svg>
         </div>
       </div>
     </div>
@@ -131,6 +133,54 @@
     </div>
   </section>
 
+  <!-- RESULTADOS -->
+  <section class="sec" id="resultados">
+    <div class="wrap">
+      <div class="sec__head reveal">
+        <p class="eyebrow">Resultados</p>
+        <h2>Sonrisas reales, <em>resultados reales</em>.</h2>
+        <svg class="smile" viewBox="0 0 160 36" aria-hidden="true"><path d="M6 8c18 28 130 28 148 0"/></svg>
+        <p class="lead">Casos del consultorio, sin filtros ni edición. Desliza cada imagen para comparar el antes y el después.</p>
+      </div>
+
+      <div class="ba-grid">
+        <figure class="ba reveal" style="--pos:50%">
+          <div class="ba__layer ba__after media" data-img="assets/resultados/caso-1-despues.jpg" data-label="Foto DESPUÉS" data-hint="Vertical 4:5 · mínimo 1200 px"></div>
+          <div class="ba__layer ba__before media" data-img="assets/resultados/caso-1-antes.jpg" data-label="Foto ANTES" data-hint="Misma pose y luz que el después"></div>
+          <span class="ba__tag ba__tag--l">Antes</span><span class="ba__tag ba__tag--r">Después</span>
+          <span class="ba__handle" aria-hidden="true"><i>↔</i><svg class="spark" viewBox="0 0 24 24"><path d="M12 0c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12 7-1 11-5 12-12z"/></svg></span>
+          <input class="ba__range" type="range" min="0" max="100" value="50" aria-label="Comparar antes y después: diseño de sonrisa">
+          <figcaption><b>Diseño de sonrisa</b><span>[Iniciales del paciente] · [duración]</span></figcaption>
+        </figure>
+        <figure class="ba reveal" style="--pos:50%">
+          <div class="ba__layer ba__after media" data-img="assets/resultados/caso-2-despues.jpg" data-label="Foto DESPUÉS" data-hint="Vertical 4:5 · mínimo 1200 px"></div>
+          <div class="ba__layer ba__before media" data-img="assets/resultados/caso-2-antes.jpg" data-label="Foto ANTES" data-hint="Misma pose y luz que el después"></div>
+          <span class="ba__tag ba__tag--l">Antes</span><span class="ba__tag ba__tag--r">Después</span>
+          <span class="ba__handle" aria-hidden="true"><i>↔</i><svg class="spark" viewBox="0 0 24 24"><path d="M12 0c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12 7-1 11-5 12-12z"/></svg></span>
+          <input class="ba__range" type="range" min="0" max="100" value="50" aria-label="Comparar antes y después: ortodoncia invisible">
+          <figcaption><b>Ortodoncia invisible</b><span>[Iniciales del paciente] · [duración]</span></figcaption>
+        </figure>
+        <figure class="ba reveal" style="--pos:50%">
+          <div class="ba__layer ba__after media" data-img="assets/resultados/caso-3-despues.jpg" data-label="Foto DESPUÉS" data-hint="Vertical 4:5 · mínimo 1200 px"></div>
+          <div class="ba__layer ba__before media" data-img="assets/resultados/caso-3-antes.jpg" data-label="Foto ANTES" data-hint="Misma pose y luz que el después"></div>
+          <span class="ba__tag ba__tag--l">Antes</span><span class="ba__tag ba__tag--r">Después</span>
+          <span class="ba__handle" aria-hidden="true"><i>↔</i><svg class="spark" viewBox="0 0 24 24"><path d="M12 0c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12 7-1 11-5 12-12z"/></svg></span>
+          <input class="ba__range" type="range" min="0" max="100" value="50" aria-label="Comparar antes y después: implantes dentales">
+          <figcaption><b>Implantes dentales</b><span>[Iniciales del paciente] · [duración]</span></figcaption>
+        </figure>
+      </div>
+      <p class="consent-note reveal">Fotos publicadas con autorización escrita de cada paciente.</p>
+
+      <div class="subhead reveal"><h3>Historias en video</h3><p>Pacientes cuentan su experiencia con sus propias palabras.</p></div>
+      <div class="vids">
+        <div class="vid reveal media" data-video="assets/videos/historia-1.mp4" data-label="Video: historia de paciente 1" data-hint="Vertical 9:16 · MP4 o enlace de YouTube"></div>
+        <div class="vid reveal media" data-video="assets/videos/historia-2.mp4" data-label="Video: historia de paciente 2" data-hint="Vertical 9:16 · MP4 o enlace de YouTube"></div>
+        <div class="vid reveal media" data-video="assets/videos/historia-3.mp4" data-label="Video: historia de paciente 3" data-hint="Vertical 9:16 · MP4 o enlace de YouTube"></div>
+      </div>
+      <div class="sec__cta reveal"><a class="btn btn--dark" href="#agendar">Quiero mi valoración</a></div>
+    </div>
+  </section>
+
   <!-- DOCTOR -->
   <section class="sec sec--dark" id="doctor">
     <div class="wrap split">
@@ -150,6 +200,33 @@
         <div><b>100%</b><span>casos reales, sin filtros</span></div>
         <div><b data-count="3">0</b><span>ciudades</span></div>
         <div><b>5/5</b><span>índice de satisfacción</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ASÍ TRABAJAMOS -->
+  <section class="sec" id="trabajo">
+    <div class="wrap">
+      <div class="sec__head reveal">
+        <p class="eyebrow">Así trabajamos</p>
+        <h2>Tecnología, detalle <em>y trato humano</em>.</h2>
+        <svg class="smile" viewBox="0 0 160 36" aria-hidden="true"><path d="M6 8c18 28 130 28 148 0"/></svg>
+        <p class="lead">Conoce el consultorio, al equipo y cómo se hace cada tratamiento, paso a paso.</p>
+      </div>
+      <div class="bento">
+        <div class="bento__a reveal media" data-img="assets/trabajo/consultorio.jpg" data-label="Foto: el consultorio" data-hint="Horizontal 4:3 · sala de atención y equipos"></div>
+        <div class="bento__b reveal media" data-img="assets/trabajo/doctor.jpg" data-label="Foto: el Dr. Rivas en consulta" data-hint="Con un paciente o planeando un caso"></div>
+        <div class="bento__c reveal media" data-img="assets/trabajo/diseno-sonrisa.jpg" data-label="Foto: diseño de sonrisa en proceso" data-hint="Planeación digital o prueba de carillas"></div>
+        <div class="bento__d reveal media" data-video="assets/videos/un-dia-en-la-clinica.mp4" data-label="Video: un día en la clínica" data-hint="Horizontal 16:9 · 30 a 60 segundos"></div>
+        <div class="bento__e reveal media" data-img="assets/trabajo/implantes.jpg" data-label="Foto: implantes" data-hint="Procedimiento o guía quirúrgica"></div>
+        <div class="bento__f reveal media" data-img="assets/trabajo/alineadores.jpg" data-label="Foto: alineadores" data-hint="Escáner o alineadores transparentes"></div>
+      </div>
+
+      <div class="subhead reveal"><h3>Nuestras sedes</h3><p>La misma atención en cada ciudad.</p></div>
+      <div class="sedes-strip">
+        <div class="reveal media" data-img="assets/trabajo/sede-yopal.jpg" data-label="Foto: sede Yopal" data-hint="Fachada o recepción"><span class="sedes-strip__tag">Yopal</span></div>
+        <div class="reveal media" data-img="assets/trabajo/sede-aguazul.jpg" data-label="Foto: sede Aguazul" data-hint="Fachada o recepción"><span class="sedes-strip__tag">Aguazul</span></div>
+        <div class="reveal media" data-img="assets/trabajo/sede-bogota.jpg" data-label="Foto: sede Bogotá" data-hint="Fachada o recepción"><span class="sedes-strip__tag">Bogotá</span></div>
       </div>
     </div>
   </section>
@@ -362,5 +439,6 @@
 
 <script src="script.js"></script>
 <script src="agenda.js"></script>
+<script src="media.js"></script>
 </body>
 </html>

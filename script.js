@@ -55,10 +55,16 @@
   const gate = $('#gate');
   const openGate = () => { gate.classList.remove('off'); document.body.classList.add('lock'); };
   const closeGate = () => { gate.classList.add('off'); document.body.classList.remove('lock'); };
+  // La transición nace en el botón que se pulsó (efecto "iris")
+  const origin = el => {
+    const r = el.getBoundingClientRect();
+    gate.style.setProperty('--cx', Math.round(r.left + r.width / 2) + 'px');
+    gate.style.setProperty('--cy', Math.round(r.top + r.height / 2) + 'px');
+  };
   $$('.city').forEach(b => b.addEventListener('click', () => {
-    chosen = true; setSede(b.dataset.sede); closeGate();
+    origin(b); chosen = true; setSede(b.dataset.sede); closeGate();
   }));
-  $('#sedeChip').addEventListener('click', openGate);
+  $('#sedeChip').addEventListener('click', e => { origin(e.currentTarget); openGate(); });
   $$('.tabs button').forEach(b => b.addEventListener('click', () => { chosen = true; setSede(b.dataset.sede); }));
 
   // Cada vez que entra, el visitante debe elegir su sede (no se recuerda la anterior).
