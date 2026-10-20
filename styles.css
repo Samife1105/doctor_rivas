@@ -306,7 +306,7 @@ em{font-style:italic}
 }
 
 .fhint{font-size:.82rem;min-height:1.1em;margin-top:-6px;color:var(--mute)}
-.fhint:empty{display:none}
+.fhint:empty{display:block}
 .fhint.ok{color:#1a7f37}.fhint.bad{color:#b3261e}
 .bfields input[aria-invalid=true]{border-color:#b3261e}
 .slots__row{grid-template-columns:repeat(3,1fr)}

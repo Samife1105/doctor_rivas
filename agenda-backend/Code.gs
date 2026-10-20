@@ -293,9 +293,9 @@ function registrar_(d) {
           kicker: 'Cita guardada', saludo: 'Hola ' + nombre.split(' ')[0], titulo: 'Tu cita quedó guardada',
           y: y, m: m, d: dd, hora: hora, id: id,
           filas: [['Sede', esc_(sede.nombre)], ['Dirección', esc_(sede.direccion)], ['Tipo de cita', esc_(tipo)], ['Paciente', esc_(nombre)]],
-          botones: [{ txt: 'Avisar por WhatsApp', url: wa + '?text=' + encodeURIComponent('Hola, tengo una cita el ' + cuando + ' en la sede ' + sede.nombre + '.'), oscuro: true },
+          botones: [{ txt: 'Confirmar asistencia', url: wa + '?text=' + encodeURIComponent('Hola, confirmo mi asistencia a la cita del ' + cuando + ' en la sede ' + sede.nombre + '.'), oscuro: true },
                     { txt: 'Cómo llegar', url: mapsUrl_(sede) }],
-          pie: 'Si necesitas cambiar o cancelar tu cita, escríbenos por WhatsApp. ¡Te esperamos!'
+          pie: '<b>Importante:</b> confirma tu asistencia con el botón de WhatsApp, así sabemos que vienes. Si necesitas cambiar o cancelar tu cita, escríbenos por ahí. ¡Te esperamos!'
         })
       });
     } catch (err) { /* si el correo falla, la cita igual queda guardada */ }
@@ -429,8 +429,8 @@ function probarCorreos() {
   const wa = 'https://wa.me/' + sede.whatsapp;
   MailApp.sendEmail({ to: destino, name: cfg.remitente, subject: '[Muestra 1/3] Tu cita quedó guardada', htmlBody: tarjeta_(Object.assign({}, base, {
     kicker: 'Cita guardada', saludo: 'Hola Laura', titulo: 'Tu cita quedó guardada', filas: filas,
-    botones: [{ txt: 'Avisar por WhatsApp', url: wa, oscuro: true }, { txt: 'Cómo llegar', url: mapsUrl_(sede) }],
-    pie: 'Si necesitas cambiar o cancelar tu cita, escríbenos por WhatsApp. ¡Te esperamos!' })) });
+    botones: [{ txt: 'Confirmar asistencia', url: wa, oscuro: true }, { txt: 'Cómo llegar', url: mapsUrl_(sede) }],
+    pie: '<b>Importante:</b> confirma tu asistencia con el botón de WhatsApp, así sabemos que vienes. Si necesitas cambiar o cancelar tu cita, escríbenos por ahí. ¡Te esperamos!' })) });
   MailApp.sendEmail({ to: destino, name: cfg.remitente, subject: '[Muestra 2/3] Nueva cita · ' + sede.nombre, htmlBody: tarjeta_(Object.assign({}, base, {
     kicker: 'Nueva cita', saludo: sede.nombre, titulo: 'Nueva cita agendada',
     filas: [['Paciente', 'Laura Gómez'], ['Celular', '3001234567'], ['Correo', 'laura@correo.com'], ['Tipo de cita', 'Diseño de sonrisa'], ['Estado', 'Pendiente'], ['Pestaña', 'Citas Yopal']],

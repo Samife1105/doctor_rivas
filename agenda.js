@@ -260,8 +260,10 @@
 
   /* ---- Confirmar ---- */
   const err = msg => { const e = $('#bErr'); e.textContent = msg || ''; e.hidden = !msg; if (msg) e.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
-  $('#bookForm').addEventListener('submit', async e => {
-    e.preventDefault();
+  let lastCard = null;
+  const formEl = $('#bookForm');
+  formEl.addEventListener('submit', e => { e.preventDefault(); confirmar().catch(x => { const g = $('#bGo'); g.disabled = false; g.textContent = 'Confirmar cita'; err('No pudimos continuar (' + (x && x.message || 'error') + '). Inténtalo de nuevo o escríbenos por WhatsApp.'); }); });
+  async function confirmar() {
     if ($('#bHp').value) return; // anti-spam
     const nombre = $('#bNombre').value.trim(), tel = $('#bTel').value, mail = $('#bMail').value.trim().toLowerCase();
     if (!st.date || !st.time) return err('Elige el día y la hora de tu cita.');
@@ -288,12 +290,72 @@
     if (BACKEND) { (remote.taken[st.sede] = remote.taken[st.sede] || new Set()).add(`${ymd(st.date)}|${st.time}`); }
 
     $('#doneTxt').textContent = `${nombre}, te esperamos el ${fecha} a las ${hhmm12(st.time)} en la sede ${s.name} (${s.addr}). Tipo de cita: ${st.tipo}.`;
-    const msg = `Hola, quiero confirmar mi cita.\nNombre: ${nombre}\nTipo: ${st.tipo}\nSede: ${s.name}\nFecha: ${fecha}\nHora: ${hhmm12(st.time)}`;
+    const msg = `Hola, confirmo mi asistencia a la cita.
+Nombre: ${nombre}
+Tipo: ${st.tipo}
+Sede: ${s.name}
+Fecha: ${fecha}
+Hora: ${hhmm12(st.time)}`;
+    lastCard = { nombre, tipo: st.tipo, sede: s.name, addr: s.addr, dia: st.date.getDate(), mes: `${MESES[st.date.getMonth()]} ${st.date.getFullYear()}`, sem: DIAS[st.date.getDay()], hora: hhmm12(st.time) };
     $('#doneWa').href = R.waUrl(st.sede, msg);
     clearForm(); // formulario limpio apenas se confirma
     $('#bookForm').hidden = true; $('#bDone').hidden = false;
     document.querySelector('.ticket').classList.add('full', 'booked');
     $('#book').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* Celular: al tocar el botón el teclado se cierra y la página se mueve; se envía al soltar el dedo para no perder el toque */
+  const goBtn = $('#bGo'); let tocado = false;
+  goBtn.addEventListener('pointerup', e => {
+    if (e.pointerType === 'mouse' || goBtn.disabled) return;
+    tocado = true; setTimeout(() => { tocado = false; }, 700);
+    e.preventDefault(); formEl.requestSubmit();
+  });
+  goBtn.addEventListener('click', e => { if (tocado) e.preventDefault(); });
+
+  /* Tarjeta de la cita como imagen (para quien no deja correo): se guarda o se comparte por WhatsApp */
+  function dibujarTarjeta(d) {
+    const W = 1080, H = 1350, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d'), SERIF = '"Instrument Serif", Georgia, serif', SANS = 'Inter, Arial, sans-serif';
+    const rr = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
+    g.fillStyle = '#e1e5e2'; g.fillRect(0, 0, W, H);
+    rr(60, 60, W - 120, H - 120, 48); g.fillStyle = '#f8f9f7'; g.fill();
+    g.save(); rr(60, 60, W - 120, H - 120, 48); g.clip();
+    g.fillStyle = '#0b0c0c'; g.fillRect(60, 60, W - 120, 190);
+    g.fillStyle = '#f4f6f4'; g.font = `64px ${SERIF}`; g.fillText('Dr. Rivas', 110, 150);
+    g.fillStyle = '#aeb6b2'; g.font = `600 20px ${SANS}`; g.fillText('ODONTOLOGÍA & ESTÉTICA', 112, 196);
+    g.restore();
+    g.fillStyle = '#2f6b63'; g.font = `600 26px ${SANS}`; g.fillText(('HOLA ' + d.nombre.split(' ')[0]).toUpperCase(), 110, 340);
+    g.fillStyle = '#0b0c0c'; g.font = `84px ${SERIF}`; g.fillText('Tu cita quedó guardada', 110, 440);
+    g.font = `190px ${SERIF}`; g.fillText(String(d.dia).padStart(2, '0'), 110, 650);
+    g.font = `700 40px ${SANS}`; g.fillText(d.mes, 340, 585);
+    g.fillStyle = '#5c6763'; g.font = `32px ${SANS}`; g.fillText(d.sem.charAt(0).toUpperCase() + d.sem.slice(1), 340, 635);
+    rr(700, 560, 270, 96, 28); g.fillStyle = '#0b0c0c'; g.fill();
+    g.fillStyle = '#f4f6f4'; g.font = `700 40px ${SANS}`; g.textAlign = 'center'; g.fillText(d.hora, 835, 622); g.textAlign = 'left';
+    const filas = [['SEDE', d.sede], ['DIRECCIÓN', d.addr], ['TIPO DE CITA', d.tipo], ['PACIENTE', d.nombre]];
+    let y = 740;
+    filas.forEach(([k, v]) => {
+      g.strokeStyle = '#dde2df'; g.lineWidth = 2; g.beginPath(); g.moveTo(110, y + 50); g.lineTo(W - 110, y + 50); g.stroke();
+      g.fillStyle = '#5c6763'; g.font = `600 24px ${SANS}`; g.fillText(k, 110, y + 20);
+      g.fillStyle = '#0b0c0c'; g.font = `600 32px ${SANS}`;
+      let px = 32; while (g.measureText(v).width > 550 && px > 22) { px -= 2; g.font = `600 ${px}px ${SANS}`; }
+      g.fillText(v, 420, y + 20);
+      y += 92;
+    });
+    g.fillStyle = '#5c6763'; g.font = `400 28px ${SANS}`;
+    g.fillText('Confirma tu asistencia por WhatsApp. ¡Te esperamos!', 110, 1180);
+    return cv;
+  }
+  $('#doneCard').addEventListener('click', async () => {
+    if (!lastCard) return;
+    try { await document.fonts.ready; } catch { /* sin fuentes web: se usa la de respaldo */ }
+    const cv = dibujarTarjeta(lastCard);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    const file = new File([blob], 'mi-cita-dr-rivas.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], text: 'Mi cita en la Clínica Dr. Rivas' }); return; } catch { /* cancelado: se descarga */ }
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
   });
 
   function clearForm() {
