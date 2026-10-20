@@ -40,3 +40,13 @@ Las horas ya tomadas aparecen con candado en el sitio para todos los pacientes.
 - No incluye: recordatorios por **WhatsApp** (requiere WhatsApp Business API, es un servicio de pago aparte) ni mensajes de SMS.
 - Límites gratuitos de Google: unos 100 correos al día con una cuenta gratuita (1.500 con Google Workspace). Alcanza para el volumen normal de una clínica.
 - Cualquier persona puede enviar citas a la dirección pública; el script valida todo, evita horas repetidas, limita a 3 citas pendientes por celular y respeta los topes.
+
+## Qué correo es cuál
+| Correo | Dónde se escribe | Para qué sirve |
+|---|---|---|
+| **Del paciente** | En el formulario del sitio (opcional) | Recibe la **invitación de calendario** (le queda en su Google Calendar) y el **recordatorio** un día antes. |
+| **De la sede** (uno o varios) | Hoja *Configuración*, columna "Correo(s) de la sede" (separa varios con coma) | Reciben el **aviso de cada cita nueva** y, si el parámetro "Invitar a los correos de la sede" está en SI, la **invitación al evento** (la cita queda en el calendario de cada uno). |
+| **Cuenta de Google que publica el script** | La cuenta con la que se instala | Es la **dueña** del calendario donde se crean los eventos y desde donde **salen** todos los correos. Debe ser la cuenta de la clínica. |
+
+## Colores de la hoja *Citas*
+Pendiente = amarillo · Confirmada = azul · Atendida = verde · No asistió = gris · Cancelada = rojo suave. Toda la fila cambia de color.

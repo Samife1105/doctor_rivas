@@ -41,9 +41,8 @@ dv_sede = DataValidation(type='list', formula1='"Yopal,Aguazul,Bogotá"', allow_
 ws.add_data_validation(dv_estado); ws.add_data_validation(dv_sede)
 dv_estado.add('J2:J1000'); dv_sede.add('C2:C1000')
 
-ws.conditional_formatting.add('A2:M1000', FormulaRule(formula=['$J2="Cancelada"'], font=Font(color='9A9A9A', strike=True)))
-ws.conditional_formatting.add('A2:M1000', FormulaRule(formula=['$J2="Confirmada"'], fill=PatternFill('solid', bgColor='E8F3EA', fgColor='E8F3EA')))
-ws.conditional_formatting.add('A2:M1000', FormulaRule(formula=['$J2="Pendiente"'], fill=PatternFill('solid', bgColor='FFF7E0', fgColor='FFF7E0')))
+for estado, bg, fg in (('Pendiente', 'FFF4CC', '5B4B00'), ('Confirmada', 'DCEBFF', '12365F'), ('Atendida', 'D3EFD8', '14532D'), ('No asistió', 'E6E6E6', '6B6B6B'), ('Cancelada', 'F8D7D3', '8A2F27')):
+    ws.conditional_formatting.add('A2:M1000', FormulaRule(formula=['$J2="%s"' % estado], fill=PatternFill('solid', bgColor=bg, fgColor=bg), font=Font(color=fg)))
 
 # ---------------------------------------------------------------- Configuración
 cf = wb.create_sheet('Configuración')
@@ -67,13 +66,14 @@ params = [
     ('Duración de cada cita (minutos)', 30),
     ('Nombre que ven los pacientes en los correos', 'Clínica Dr. Rivas'),
     ('Correo interno que recibe copia de todas las citas (opcional)', ''),
+    ('Invitar a los correos de la sede al evento de calendario (SI/NO)', 'SI'),
 ]
 for i, (k, v) in enumerate(params, start=4):
     cf.cell(row=i, column=1, value=k)
     c = cf.cell(row=i, column=2, value=v); c.fill = soft; c.border = Border(bottom=thin)
 
 title('A11', 'Sedes')
-for j, h in enumerate(['Clave (no cambiar)', 'Nombre', 'Correo que recibe los avisos de la sede', 'WhatsApp', 'ID del calendario de la sede (vacío = calendario principal)', 'Dirección'], start=1):
+for j, h in enumerate(['Clave (no cambiar)', 'Nombre', 'Correo(s) de la sede: reciben el aviso de cada cita y la invitación de calendario (separa varios con coma)', 'WhatsApp', 'ID del calendario de la sede (vacío = calendario principal)', 'Dirección'], start=1):
     c = cf.cell(row=12, column=j, value=h); c.fill, c.font = head_fill, head_font
     c.alignment = Alignment(wrap_text=True, vertical='center')
 cf.row_dimensions[12].height = 44
@@ -144,7 +144,7 @@ lines = [
     ('4. A partir de ahí, cada cita que se agende en el sitio aparece como una fila nueva en la hoja "Citas".', False),
     ('', False),
     ('QUÉ HACE LA RECEPCIÓN', True),
-    ('• Cambia la columna "Estado": Pendiente → Confirmada / Atendida / No asistió / Cancelada.', False),
+    ('• Cambia la columna "Estado": Pendiente (amarillo) → Confirmada (azul) / Atendida (verde) / No asistió (gris) / Cancelada (rojo). La fila completa cambia de color.', False),
     ('• Si pones "Cancelada", la hora vuelve a quedar libre en el sitio y el evento se borra del calendario.', False),
     ('• Puedes escribir en "Notas (uso interno)". No cambies las demás columnas.', False),
     ('• No borres filas de citas futuras: cámbiales el estado a "Cancelada".', False),
