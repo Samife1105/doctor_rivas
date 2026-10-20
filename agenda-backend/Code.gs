@@ -187,11 +187,11 @@ function mapsUrl_(sede) {
  * o = { kicker, saludo, titulo, y, m, d, hora, filas:[[etiqueta, valorHTML]], botones:[{txt,url,oscuro}], pie, id }
  */
 function tarjeta_(o) {
-  const INK = '#2b2a26', PAPER = '#ebe6dc', CARD = '#faf8f3', LINE = '#d8d2c5', MUTE = '#6a645a', ACC = '#4b655f', ON = '#f7f4ee';
+  const INK = '#0b0c0c', PAPER = '#e1e5e2', CARD = '#f8f9f7', LINE = '#d2d8d4', MUTE = '#5c6763', ACC = '#2f6b63', ON = '#f4f6f4';
   const SANS = "Arial,Helvetica,sans-serif", SERIF = "Georgia,'Times New Roman',serif";
   const filas = (o.filas || []).map(f =>
-    '<tr><td style="padding:10px 0;border-bottom:1px solid #e4dfd3;font:600 11px ' + SANS + ';letter-spacing:1.4px;text-transform:uppercase;color:' + MUTE + ';width:34%;vertical-align:top">' + esc_(f[0]) + '</td>' +
-    '<td style="padding:10px 0 10px 12px;border-bottom:1px solid #e4dfd3;font:600 15px/1.4 ' + SANS + ';color:' + INK + '">' + f[1] + '</td></tr>').join('');
+    '<tr><td style="padding:10px 0;border-bottom:1px solid #dde2df;font:600 11px ' + SANS + ';letter-spacing:1.4px;text-transform:uppercase;color:' + MUTE + ';width:34%;vertical-align:top">' + esc_(f[0]) + '</td>' +
+    '<td style="padding:10px 0 10px 12px;border-bottom:1px solid #dde2df;font:600 15px/1.4 ' + SANS + ';color:' + INK + '">' + f[1] + '</td></tr>').join('');
   const botones = (o.botones || []).map(b =>
     '<a href="' + b.url + '" style="display:inline-block;margin:0 8px 10px 0;padding:13px 24px;border-radius:999px;font:700 14px ' + SANS + ';text-decoration:none;' +
     (b.oscuro ? 'background:' + INK + ';color:' + ON + ';border:2px solid ' + INK : 'background:transparent;color:' + INK + ';border:2px solid ' + INK) + '">' + esc_(b.txt) + '</a>').join('');
@@ -209,8 +209,8 @@ function tarjeta_(o) {
     // encabezado
     '<tr><td bgcolor="' + INK + '" style="background:' + INK + ';padding:22px 28px">' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
-    '<td style="font:400 28px ' + SERIF + ';color:' + ON + '">Dr. Rivas<div style="font:600 10px ' + SANS + ';letter-spacing:3px;color:#b9b2a5;margin-top:4px;text-transform:uppercase">Odontología &amp; Estética</div></td>' +
-    '<td align="right" style="vertical-align:middle"><span style="display:inline-block;border:1px solid #6b665c;color:' + ON + ';font:700 10px ' + SANS + ';letter-spacing:2px;text-transform:uppercase;padding:7px 14px;border-radius:999px">' + esc_(o.kicker) + '</span></td>' +
+    '<td style="font:400 28px ' + SERIF + ';color:' + ON + '">Dr. Rivas<div style="font:600 10px ' + SANS + ';letter-spacing:3px;color:#aeb6b2;margin-top:4px;text-transform:uppercase">Odontología &amp; Estética</div></td>' +
+    '<td align="right" style="vertical-align:middle"><span style="display:inline-block;border:1px solid #4d5553;color:' + ON + ';font:700 10px ' + SANS + ';letter-spacing:2px;text-transform:uppercase;padding:7px 14px;border-radius:999px">' + esc_(o.kicker) + '</span></td>' +
     '</tr></table></td></tr>' +
     // cuerpo
     '<tr><td style="padding:30px 28px 8px">' +
@@ -222,7 +222,7 @@ function tarjeta_(o) {
     '<tr><td style="padding:0 28px"><div style="border-top:2px dashed #cfc8b9;height:0;line-height:0;font-size:0">&nbsp;</div></td></tr>' +
     '<tr><td style="padding:10px 28px 6px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' + filas + '</table></td></tr>' +
     '<tr><td style="padding:22px 28px 6px">' + botones + '</td></tr>' +
-    '<tr><td style="padding:10px 28px 26px;font:400 13px/1.55 ' + SANS + ';color:' + MUTE + '">' + (o.pie || '') + (o.id ? '<div style="margin-top:10px;font-size:11px;letter-spacing:1.2px;color:#8d867a">CITA ' + esc_(o.id) + '</div>' : '') + '</td></tr>' +
+    '<tr><td style="padding:10px 28px 26px;font:400 13px/1.55 ' + SANS + ';color:' + MUTE + '">' + (o.pie || '') + (o.id ? '<div style="margin-top:10px;font-size:11px;letter-spacing:1.2px;color:#818a86">CITA ' + esc_(o.id) + '</div>' : '') + '</td></tr>' +
     '</table></td></tr></table>';
 }
 
