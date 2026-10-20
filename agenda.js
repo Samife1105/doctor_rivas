@@ -61,7 +61,8 @@
 
   async function enviarReserva(p) {
     if (!BACKEND) { guardarCita(`${p.sede}|${p.fecha}|${p.hora}`); return { ok: true, local: true }; }
-    return pedir(BACKEND, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(p) }, 30000); // en datos móviles, guardar y enviar el correo puede tardar
+    // Se envía por GET (como la lectura de horarios): en iPhone/Safari el POST hacia Google falla; el GET sí llega
+    return pedir(`${BACKEND}?accion=reservar&d=${encodeURIComponent(JSON.stringify(p))}&_=${Date.now()}`, {}, 30000);
   }
   const MENSAJES = {
     hora_ocupada: 'Esa hora acaba de ser tomada por otra persona. Elige otra, por favor.',
@@ -289,7 +290,7 @@
     if (BACKEND) { (remote.taken[st.sede] = remote.taken[st.sede] || new Set()).add(`${ymd(st.date)}|${st.time}`); }
 
     $('#doneTxt').textContent = `${nombre}, te esperamos el ${fecha} a las ${hhmm12(st.time)} en la sede ${s.name} (${s.addr}). Tipo de cita: ${st.tipo}.`;
-    const msg = `Hola, confirmo mi asistencia a la cita.
+    const msg = `Hola, quiero confirmar mi cita.
 Nombre: ${nombre}
 Tipo: ${st.tipo}
 Sede: ${s.name}
