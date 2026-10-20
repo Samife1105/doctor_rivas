@@ -46,6 +46,7 @@
     $('#sWa').href = waUrl(id);
     $('#sWaTxt').textContent = s.phone;
     $('#sMap').href = s.maps;
+    $('#moreReviews').href = s.maps;
     $('#mapFrame').src = `https://www.google.com/maps?q=${encodeURIComponent(s.q)}&z=16&hl=es&output=embed`;
     $('#formSede').value = id;
     document.dispatchEvent(new CustomEvent('sedechange', { detail: id }));

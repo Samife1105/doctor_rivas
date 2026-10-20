@@ -17,7 +17,7 @@
 <!-- Selector de sede (estilo cine: eliges tu ciudad al entrar) -->
 <div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gate-title">
   <div class="gate__inner">
-    <div class="gate__brand">Dr. Rivas<span>Odontología &amp; Estética</span></div>
+    <div class="gate__brand"><span class="logo__img" role="img" aria-label="Dr. Rivas"></span><span>Odontología &amp; Estética</span></div>
     <h2 id="gate-title">¿En qué sede te atendemos?</h2>
     <p class="gate__sub">Elige tu ciudad para mostrarte la dirección, el mapa y el WhatsApp correctos.</p>
     <div class="gate__grid">
@@ -44,7 +44,7 @@
 </div>
 
 <header class="nav" id="nav">
-  <a class="logo" href="#inicio" aria-label="Dr. Rivas, inicio">Dr. Rivas<small>Odontología &amp; Estética</small></a>
+  <a class="logo" href="#inicio" aria-label="Dr. Rivas, inicio"><span class="logo__img" aria-hidden="true"></span></a>
   <nav class="nav__links" id="menu" aria-label="Principal">
     <a href="#servicios">Tratamientos</a>
     <a href="#resultados">Resultados</a>
@@ -74,7 +74,7 @@
         </div>
         <ul class="hero__facts reveal">
           <li><b data-count="10">0</b>+<span>años de experiencia</span></li>
-          <li><b data-count="3">0</b><span>sedes en Colombia</span></li>
+          <li><b data-count="1000">0</b>+<span>pacientes satisfechos</span></li>
           <li><b>5/5</b><span>satisfacción</span></li>
         </ul>
       </div>
@@ -198,9 +198,9 @@
           <li>Pacientes de todo el país e internacionales</li>
         </ul>
         <div class="stats stats--row">
+          <div><b data-count="1000">0</b>+<span>pacientes satisfechos</span></div>
+          <div><b data-count="3000">0</b>+<span>tratamientos exitosos</span></div>
           <div><b data-count="10">0</b>+<span>años de experiencia</span></div>
-          <div><b>100%</b><span>casos reales, sin filtros</span></div>
-          <div><b data-count="3">0</b><span>ciudades</span></div>
           <div><b>5/5</b><span>índice de satisfacción</span></div>
         </div>
         <a class="btn btn--light" data-wa href="#" target="_blank" rel="noopener">Hablemos por WhatsApp</a>
@@ -231,6 +231,49 @@
         <div class="reveal media" data-img="assets/trabajo/sede-yopal.jpg" data-label="Foto: sede Yopal" data-hint="Fachada o recepción"><span class="sedes-strip__tag">Yopal</span></div>
         <div class="reveal media" data-img="assets/trabajo/sede-aguazul.jpg" data-label="Foto: sede Aguazul" data-hint="Fachada o recepción"><span class="sedes-strip__tag">Aguazul</span></div>
         <div class="reveal media" data-img="assets/trabajo/sede-bogota.jpg" data-label="Foto: sede Bogotá" data-hint="Fachada o recepción"><span class="sedes-strip__tag">Bogotá</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESEÑAS DE GOOGLE -->
+  <section class="sec sec--soft" id="resenas">
+    <div class="wrap">
+      <div class="sec__head reveal">
+        <p class="eyebrow">Opiniones</p>
+        <h2>Lo que dicen <em>nuestros pacientes</em>.</h2>
+        <p class="lead">Reseñas reales publicadas en Google. Calificación 5/5.</p>
+      </div>
+      <div class="reviews">
+        <figure class="review reveal">
+          <div class="stars" role="img" aria-label="5 de 5 estrellas">★★★★★</div>
+          <blockquote>¡Excelente experiencia! Desde que entras se siente un ambiente muy profesional y acogedor. Me sentí muy bien atendida y el trato fue increíblemente humano. Sin duda, mi lugar de confianza a partir de ahora.</blockquote>
+          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google</figcaption>
+        </figure>
+        <figure class="review reveal">
+          <div class="stars" role="img" aria-label="5 de 5 estrellas">★★★★★</div>
+          <blockquote>Excelente oportunidad y calidad profesional en los servicios que presta la empresa. Alta calidez humana y atención increíble de absolutamente todo el personal. Mi familia y yo, totalmente a gusto con la clínica. Recomendadísima.</blockquote>
+          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google</figcaption>
+        </figure>
+        <figure class="review reveal">
+          <div class="stars" role="img" aria-label="5 de 5 estrellas">★★★★★</div>
+          <blockquote>La atención es maravillosa, y mi tratamiento quedó increíble. Soy la más feliz.</blockquote>
+          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google</figcaption>
+        </figure>
+        <figure class="review reveal">
+          <div class="stars" role="img" aria-label="5 de 5 estrellas">★★★★★</div>
+          <blockquote>La atención siempre fue oportuna y cordial, excelentes profesionales.</blockquote>
+          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google</figcaption>
+        </figure>
+        <figure class="review reveal">
+          <div class="stars" role="img" aria-label="5 de 5 estrellas">★★★★★</div>
+          <blockquote>Excelente doctor, siempre presta buenos servicios. 10/10.</blockquote>
+          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google</figcaption>
+        </figure>
+        <figure class="review review--cta reveal">
+          <b data-count="1000">0</b><em>+</em>
+          <p>pacientes satisfechos en las 3 sedes</p>
+          <a class="btn btn--light" id="moreReviews" href="https://maps.app.goo.gl/unhVyQFb4ZGxKXGC7" target="_blank" rel="noopener">Ver más en Google Maps</a>
+        </figure>
       </div>
     </div>
   </section>
@@ -339,7 +382,7 @@
               <p class="fhint full" id="bMailHint" aria-live="polite"></p>
               <input class="hp" id="bHp" tabindex="-1" autocomplete="off" aria-hidden="true">
             </div>
-            <label class="consent"><input type="checkbox" id="bOk"><span>Acepto que la clínica use mis datos para gestionar mi cita.</span></label>
+            <label class="consent"><input type="checkbox" id="bOk"><span>Acepto que la clínica use mis datos para gestionar mi cita, según la <a href="privacidad.html" target="_blank" rel="noopener">Política de tratamiento de datos personales</a>.</span></label>
           </div>
 
           <p class="form__err" id="bErr" role="alert" hidden></p>
@@ -422,6 +465,7 @@
         <label>Mensaje (opcional)<textarea name="msg" rows="3" placeholder="Cuéntanos qué te gustaría mejorar"></textarea></label>
         <button class="btn btn--light" type="submit">Enviar por WhatsApp</button>
         <p class="form__err" id="formErr" role="alert" hidden>Escribe tu nombre para continuar.</p>
+        <p class="fnote">Al escribirnos aceptas nuestra <a href="privacidad.html" target="_blank" rel="noopener">política de tratamiento de datos</a>.</p>
       </form>
     </div>
   </section>
@@ -429,12 +473,12 @@
 
 <footer class="foot">
   <div class="wrap foot__grid">
-    <div><div class="logo logo--lt">Dr. Rivas<small>Odontología &amp; Estética</small></div><p>Salud primero, estética después.</p></div>
+    <div><div class="logo logo--lt"><span class="logo__img" role="img" aria-label="Dr. Rivas"></span><small>Odontología &amp; Estética</small></div><p>Salud primero, estética después.</p></div>
     <div><h4>Navegación</h4><a href="#servicios">Tratamientos</a><a href="#doctor">El doctor</a><a href="#sedes">Sedes</a><a href="#contacto">Contacto</a></div>
     <div><h4>Redes</h4><a href="https://www.instagram.com/doctor.rivas/" target="_blank" rel="noopener">Instagram</a><a href="https://www.tiktok.com/@doctor.rivas" target="_blank" rel="noopener">TikTok</a><a href="https://www.youtube.com/@docrivas" target="_blank" rel="noopener">YouTube</a><a href="https://www.facebook.com/DrRivasClinicasDentales" target="_blank" rel="noopener">Facebook</a></div>
     <div><h4>Línea principal</h4><a href="tel:+573209504800">+57 320 950 4800</a><a href="https://wa.me/573209504800?text=Hola%2C%20quiero%20m%C3%A1s%20informaci%C3%B3n" target="_blank" rel="noopener">WhatsApp</a></div>
   </div>
-  <div class="wrap foot__bar">© 2026 Clínica Odontológica y Estética Dr. Rivas. Todos los derechos reservados.</div>
+  <div class="wrap foot__bar"><span>© 2026 Clínica Odontológica y Estética Dr. Rivas. Todos los derechos reservados.</span><nav aria-label="Legal"><a href="privacidad.html">Política de tratamiento de datos</a><a href="terminos.html">Términos y condiciones</a></nav></div>
 </footer>
 
 <a class="wa-float" data-wa href="#" target="_blank" rel="noopener" aria-label="Escribir por WhatsApp">
