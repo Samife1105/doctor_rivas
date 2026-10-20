@@ -3,9 +3,10 @@
     yopal: {
       name: 'Yopal',
       addr: 'Carrera 24 con Calle 12, esquina diagonal al Edificio Luma',
-      q: 'Carrera 24 con Calle 12, Yopal, Casanare, Colombia',
+      q: '5.3474497,-72.3952236',
       phone: '+57 313 469 3232', tel: '+573134693232', wa: '573134693232',
-      maps: 'https://maps.app.goo.gl/unhVyQFb4ZGxKXGC7'
+      // Ficha real de la clínica en Google Maps (el enlace corto del sitio anterior apuntaba al Edificio Luma)
+      maps: 'https://www.google.com/maps/search/?api=1&query=Dr.+Rivas+Yopal&query_place_id=ChIJ7V3T5KkNa44Rzv3TT0uSfzk'
     },
     aguazul: {
       name: 'Aguazul',
@@ -47,6 +48,7 @@
     $('#sWaTxt').textContent = s.phone;
     $('#sMap').href = s.maps;
     $('#moreReviews').href = s.maps;
+    $$('[data-reviews]').forEach(a => { a.href = s.maps; });
     $('#mapFrame').src = `https://www.google.com/maps?q=${encodeURIComponent(s.q)}&z=16&hl=es&output=embed`;
     $('#formSede').value = id;
     document.dispatchEvent(new CustomEvent('sedechange', { detail: id }));
@@ -76,6 +78,32 @@
   // Al volver con el botón "atrás" (caché del navegador) también se vuelve a pedir la sede.
   addEventListener('pageshow', e => { if (e.persisted) { chosen = false; openGate(); } });
 
+  // Tema claro / oscuro (se recuerda en este dispositivo)
+  const themeBtn = $('#themeBtn');
+  const applyTheme = dark => {
+    document.documentElement.toggleAttribute('data-theme', dark);
+    if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+    themeBtn.setAttribute('aria-pressed', dark);
+    themeBtn.setAttribute('aria-label', dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro');
+    try { localStorage.setItem('rivas.theme', dark ? 'dark' : 'light'); } catch {}
+  };
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark');
+  themeBtn.addEventListener('click', () => {
+    const dark = document.documentElement.getAttribute('data-theme') !== 'dark';
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!document.startViewTransition || reduce) { applyTheme(dark); return; }
+    // La nueva paleta se expande en círculo desde el botón
+    const r = themeBtn.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const end = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    document.startViewTransition(() => applyTheme(dark)).ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${end}px at ${x}px ${y}px)`] },
+        { duration: 650, easing: 'cubic-bezier(0.23, 1, 0.32, 1)', pseudoElement: '::view-transition-new(root)' }
+      );
+    }).catch(() => {});
+  });
+
   // Menú móvil
   const burger = $('#burger'), menu = $('#menu');
   burger.addEventListener('click', () => {
@@ -92,9 +120,10 @@
   // Reveal + contadores
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const count = el => {
-    const t = +el.dataset.count; if (reduce) { el.textContent = t; return; }
+    const fmt = n => n.toLocaleString('es-CO');
+    const t = +el.dataset.count; if (reduce) { el.textContent = fmt(t); return; }
     const t0 = performance.now();
-    const f = now => { const p = Math.min((now - t0) / 1200, 1); el.textContent = Math.round(t * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(f); };
+    const f = now => { const p = Math.min((now - t0) / 1200, 1); el.textContent = fmt(Math.round(t * (1 - Math.pow(1 - p, 3)))); if (p < 1) requestAnimationFrame(f); };
     requestAnimationFrame(f);
   };
   if ('IntersectionObserver' in window) {

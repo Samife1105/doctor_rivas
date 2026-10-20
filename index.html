@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script>try{var t=localStorage.getItem('rivas.theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -54,6 +55,10 @@
     <a href="#contacto">Contacto</a>
   </nav>
   <div class="nav__right">
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Cambiar a tema oscuro" aria-pressed="false">
+      <svg class="ic-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M5.3 18.7L7 17M17 7l1.7-1.7"/></svg>
+      <svg class="ic-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z"/></svg>
+    </button>
     <button class="sede-chip" id="sedeChip" aria-label="Cambiar de sede"><span class="dot"></span><b id="sedeChipName">Yopal</b><span class="chev">⌄</span></button>
     <a class="btn btn--dark btn--sm" href="#agendar">Agenda tu cita</a>
     <button class="burger" id="burger" aria-label="Abrir menú" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
@@ -241,38 +246,43 @@
       <div class="sec__head reveal">
         <p class="eyebrow">Opiniones</p>
         <h2>Lo que dicen <em>nuestros pacientes</em>.</h2>
-        <p class="lead">Reseñas reales publicadas en Google. Calificación 5/5.</p>
+        <p class="lead">Reseñas reales publicadas en Google: 5,0 de calificación con más de 200 opiniones. Toca cualquiera para verla en Google Maps.</p>
       </div>
       <div class="reviews">
         <figure class="review reveal">
+          <a class="review__link" data-reviews href="#" target="_blank" rel="noopener" aria-label="Ver esta reseña en Google Maps"></a>
           <div class="stars" role="img" aria-label="5 de 5 estrellas">★★★★★</div>
           <blockquote>¡Excelente experiencia! Desde que entras se siente un ambiente muy profesional y acogedor. Me sentí muy bien atendida y el trato fue increíblemente humano. Sin duda, mi lugar de confianza a partir de ahora.</blockquote>
-          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google</figcaption>
+          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google<span class="go" aria-hidden="true">↗</span></figcaption>
         </figure>
         <figure class="review reveal">
+          <a class="review__link" data-reviews href="#" target="_blank" rel="noopener" aria-label="Ver esta reseña en Google Maps"></a>
           <div class="stars" role="img" aria-label="5 de 5 estrellas">★★★★★</div>
           <blockquote>Excelente oportunidad y calidad profesional en los servicios que presta la empresa. Alta calidez humana y atención increíble de absolutamente todo el personal. Mi familia y yo, totalmente a gusto con la clínica. Recomendadísima.</blockquote>
-          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google</figcaption>
+          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google<span class="go" aria-hidden="true">↗</span></figcaption>
         </figure>
         <figure class="review reveal">
+          <a class="review__link" data-reviews href="#" target="_blank" rel="noopener" aria-label="Ver esta reseña en Google Maps"></a>
           <div class="stars" role="img" aria-label="5 de 5 estrellas">★★★★★</div>
           <blockquote>La atención es maravillosa, y mi tratamiento quedó increíble. Soy la más feliz.</blockquote>
-          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google</figcaption>
+          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google<span class="go" aria-hidden="true">↗</span></figcaption>
         </figure>
         <figure class="review reveal">
+          <a class="review__link" data-reviews href="#" target="_blank" rel="noopener" aria-label="Ver esta reseña en Google Maps"></a>
           <div class="stars" role="img" aria-label="5 de 5 estrellas">★★★★★</div>
           <blockquote>La atención siempre fue oportuna y cordial, excelentes profesionales.</blockquote>
-          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google</figcaption>
+          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google<span class="go" aria-hidden="true">↗</span></figcaption>
         </figure>
         <figure class="review reveal">
+          <a class="review__link" data-reviews href="#" target="_blank" rel="noopener" aria-label="Ver esta reseña en Google Maps"></a>
           <div class="stars" role="img" aria-label="5 de 5 estrellas">★★★★★</div>
           <blockquote>Excelente doctor, siempre presta buenos servicios. 10/10.</blockquote>
-          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google</figcaption>
+          <figcaption><span class="gmark" aria-hidden="true">G</span>Reseña en Google<span class="go" aria-hidden="true">↗</span></figcaption>
         </figure>
         <figure class="review review--cta reveal">
           <b data-count="1000">0</b><em>+</em>
-          <p>pacientes satisfechos en las 3 sedes</p>
-          <a class="btn btn--light" id="moreReviews" href="https://maps.app.goo.gl/unhVyQFb4ZGxKXGC7" target="_blank" rel="noopener">Ver más en Google Maps</a>
+          <p>pacientes satisfechos en las 3 sedes<br>5,0 ★ en Google · más de 200 reseñas</p>
+          <a class="btn btn--light" id="moreReviews" href="#" target="_blank" rel="noopener">Ver más en Google Maps</a>
         </figure>
       </div>
     </div>
