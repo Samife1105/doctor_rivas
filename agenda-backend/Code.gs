@@ -5,9 +5,7 @@
  * Qué hace:
  *   1. Entrega al sitio la configuración (horarios por sede) y las horas ya ocupadas.
  *   2. Guarda cada cita nueva en la pestaña de SU sede: "Citas Yopal", "Citas Aguazul" o "Citas Bogotá".
- *   3. Le manda al paciente un correo corto: "tu cita quedó guardada" (si dejó su correo).
- *   4. Avisa por correo a la sede (si hay un correo configurado).
- *   5. Un día antes recuerda la cita al paciente por correo.
+ *   3. Avisa por correo a la clínica (sede) con una tarjeta de "nueva cita".
  * Si la recepción marca "Cancelada", la hora queda libre de inmediato.
  *
  * Permisos que necesita: la hoja de cálculo, enviar correos y el recordatorio diario. Nada más.
@@ -238,7 +236,7 @@ function registrar_(d) {
   const sede = cfg.sedes[d.sede];
   const nombre = String(d.nombre || '').trim();
   const celular = String(d.celular || '').replace(/\D/g, '');
-  const correo = String(d.correo || '').trim().toLowerCase();
+  const correo = '';   // el sitio ya no pide correo al paciente: el aviso le llega a la clínica
   const tipo = String(d.tipo || '');
   const fecha = String(d.fecha || '');
   const hora = String(d.hora || '');
@@ -246,7 +244,6 @@ function registrar_(d) {
   if (!sede || !HOJAS[d.sede]) return { ok: false, error: 'sede' };
   if (nombre.length < 3 || nombre.length > 80) return { ok: false, error: 'nombre' };
   if (!/^3\d{9}$/.test(celular)) return { ok: false, error: 'celular' };
-  if (correo && !/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(correo)) return { ok: false, error: 'correo' };
   if (TIPOS.indexOf(tipo) < 0) return { ok: false, error: 'tipo' };
   if (!/^\d{8}$/.test(fecha) || !/^\d{2}:\d{2}$/.test(hora)) return { ok: false, error: 'fecha' };
 
@@ -282,25 +279,6 @@ function registrar_(d) {
   const cuando = fechaLarga_(y, m, dd) + ' a las ' + hora12_(hora);
   const wa = 'https://wa.me/' + sede.whatsapp;
 
-  // --- Correo al paciente: tarjeta "tu cita quedó guardada"
-  if (correo) {
-    try {
-      MailApp.sendEmail({
-        to: correo,
-        name: cfg.remitente,
-        subject: 'Tu cita quedó guardada · ' + sede.nombre + ' · ' + dd + ' de ' + MESES_ES[m - 1],
-        htmlBody: tarjeta_({
-          kicker: 'Cita guardada', saludo: 'Hola ' + nombre.split(' ')[0], titulo: 'Tu cita quedó guardada',
-          y: y, m: m, d: dd, hora: hora, id: id,
-          filas: [['Sede', esc_(sede.nombre)], ['Dirección', esc_(sede.direccion)], ['Tipo de cita', esc_(tipo)], ['Paciente', esc_(nombre)]],
-          botones: [{ txt: 'Confirmar asistencia', url: wa + '?text=' + encodeURIComponent('Hola, confirmo mi asistencia a la cita del ' + cuando + ' en la sede ' + sede.nombre + '.'), oscuro: true },
-                    { txt: 'Cómo llegar', url: mapsUrl_(sede) }],
-          pie: '<b>Importante:</b> confirma tu asistencia con el botón de WhatsApp, así sabemos que vienes. Si necesitas cambiar o cancelar tu cita, escríbenos por ahí. ¡Te esperamos!'
-        })
-      });
-    } catch (err) { /* si el correo falla, la cita igual queda guardada */ }
-  }
-
   // --- Aviso a la sede (opcional: solo si hay correo configurado): tarjeta "nueva cita"
   if (sede.correos.length) {
     try {
@@ -312,7 +290,7 @@ function registrar_(d) {
         htmlBody: tarjeta_({
           kicker: 'Nueva cita', saludo: sede.nombre, titulo: 'Nueva cita agendada',
           y: y, m: m, d: dd, hora: hora, id: id,
-          filas: [['Paciente', esc_(nombre)], ['Celular', '<a href="https://wa.me/57' + celular + '" style="color:#0b0c0c">' + celular + '</a>'], ['Correo', esc_(correo || '—')],
+          filas: [['Paciente', esc_(nombre)], ['Celular', '<a href="https://wa.me/57' + celular + '" style="color:#0b0c0c">' + celular + '</a>'], 
                   ['Tipo de cita', esc_(tipo)], ['Estado', 'Pendiente'], ['Pestaña', esc_(HOJAS[d.sede])]],
           botones: [{ txt: 'Escribir al paciente', url: 'https://wa.me/57' + celular, oscuro: true }, { txt: 'Abrir la hoja', url: ss.getUrl() }],
           pie: 'Cuando la confirmes, cambia el estado en la hoja. Si pones “Cancelada”, la hora queda libre.'
