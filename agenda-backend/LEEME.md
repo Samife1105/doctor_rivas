@@ -42,3 +42,5 @@ ID · Registrada (cuándo se agendó) · Sede · Fecha de la cita · Hora · Tip
 - Sin recordatorios por **WhatsApp** (requiere WhatsApp Business API, servicio aparte).
 - Cuentas gratuitas de Google: ~100 correos al día (1.500 con Workspace).
 - La dirección pública acepta citas de cualquiera, pero el script valida todo, evita horas repetidas y limita a 3 citas pendientes por celular.
+
+> **Si en la hoja "Resumen" aparece #ERROR!:** tu hoja usa configuración regional con punto y coma. Entra a cada celda con fórmula y cambia las comas que separan los argumentos por punto y coma (;), por ejemplo `=COUNTIF('Citas Yopal'!$J$2:$J$1000;B3)`.
