@@ -312,7 +312,7 @@ function registrar_(d) {
         htmlBody: tarjeta_({
           kicker: 'Nueva cita', saludo: sede.nombre, titulo: 'Nueva cita agendada',
           y: y, m: m, d: dd, hora: hora, id: id,
-          filas: [['Paciente', esc_(nombre)], ['Celular', '<a href="https://wa.me/57' + celular + '" style="color:#2b2a26">' + celular + '</a>'], ['Correo', esc_(correo || '—')],
+          filas: [['Paciente', esc_(nombre)], ['Celular', '<a href="https://wa.me/57' + celular + '" style="color:#0b0c0c">' + celular + '</a>'], ['Correo', esc_(correo || '—')],
                   ['Tipo de cita', esc_(tipo)], ['Estado', 'Pendiente'], ['Pestaña', esc_(HOJAS[d.sede])]],
           botones: [{ txt: 'Escribir al paciente', url: 'https://wa.me/57' + celular, oscuro: true }, { txt: 'Abrir la hoja', url: ss.getUrl() }],
           pie: 'Cuando la confirmes, cambia el estado en la hoja. Si pones “Cancelada”, la hora queda libre.'
