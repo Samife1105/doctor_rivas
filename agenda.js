@@ -12,17 +12,64 @@
     return out;
   };
   const HORARIOS = { 0: [], 1: gen(8, 18), 2: gen(8, 18), 3: gen(8, 18), 4: gen(8, 18), 5: gen(8, 18), 6: gen(8, 12) };
-  const DIAS_ADELANTE = 30;     // máximo un mes de anticipación
-  const HORAS_ANTICIPACION = 2; // mínimo de horas antes de la cita
+  let DIAS_ADELANTE = 30;     // máximo un mes de anticipación (el servidor puede cambiarlo)
+  let HORAS_ANTICIPACION = 2; // mínimo de horas antes de la cita
   const CITAS_KEY = 'rivas.citas'; // citas ya tomadas (local, hasta conectar el backend)
   const tomadas = () => { try { return JSON.parse(localStorage.getItem(CITAS_KEY)) || []; } catch { return []; } };
   const guardarCita = k => { try { localStorage.setItem(CITAS_KEY, JSON.stringify([...tomadas(), k])); } catch {} };
 
-  /* Aquí se conectará el correo / backend más adelante. Debe devolver una promesa. */
-  async function enviarReserva(reserva) {
-    // TODO: fetch('/api/citas', { method: 'POST', body: JSON.stringify(reserva) })
-    console.info('[agenda] reserva', reserva);
+  /* ===== Conexión con el servidor de citas (Google Sheets + Calendar) =====
+     La dirección se pone en config.js. Si está vacía, el agendador funciona solo en este
+     dispositivo (modo demostración) y la cita se confirma únicamente por WhatsApp. */
+  const BACKEND = ((window.RIVAS_CONFIG || {}).backendUrl || '').trim();
+  const remote = { cfg: null, taken: {}, full: {}, ok: false };
+
+  async function pedir(url, opts) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 9000);
+    try { const r = await fetch(url, { ...opts, signal: ctl.signal }); return await r.json(); }
+    finally { clearTimeout(t); }
   }
+
+  /* Trae horarios por sede y horas ocupadas, y vuelve a dibujar el calendario */
+  let cargando = null;
+  async function refrescarRemoto() {
+    if (!BACKEND) return;
+    const sede = st.sede;
+    const box = $('#slotsBox'); if (box) box.setAttribute('aria-busy', 'true');
+    try {
+      if (!remote.cfg) {
+        const c = await pedir(`${BACKEND}?accion=config`);
+        if (c && c.ok) {
+          remote.cfg = c;
+          if (c.dias) DIAS_ADELANTE = c.dias;
+          if (c.horasMin !== undefined) HORAS_ANTICIPACION = c.horasMin;
+          refreshWindow();
+        }
+      }
+      const h = await pedir(`${BACKEND}?accion=horas&sede=${encodeURIComponent(sede)}`);
+      if (h && h.ok) {
+        remote.taken[sede] = new Set(h.ocupadas || []);
+        remote.full[sede] = new Set(h.llenos || []);
+        remote.ok = true;
+      }
+    } catch { /* sin conexión: se usan los horarios por defecto */ }
+    if (box) box.removeAttribute('aria-busy');
+    if (st.time && st.date && estaOcupada(st.date, st.time)) { st.time = null; ticket(); }
+    renderCal(); renderSlots();
+  }
+
+  async function enviarReserva(p) {
+    if (!BACKEND) { guardarCita(`${p.sede}|${p.fecha}|${p.hora}`); return { ok: true, local: true }; }
+    return pedir(BACKEND, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(p) });
+  }
+  const MENSAJES = {
+    hora_ocupada: 'Esa hora acaba de ser tomada por otra persona. Elige otra, por favor.',
+    dia_lleno: 'Ese día ya no tiene horas disponibles. Elige otro día.',
+    demasiadas_citas: 'Ya tienes varias citas pendientes con este celular. Escríbenos por WhatsApp para ayudarte.',
+    fuera_de_rango: 'Esa hora ya no está disponible. Elige otra.',
+    horario: 'Esa hora no está dentro del horario de la sede. Elige otra.'
+  };
 
   const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -39,14 +86,24 @@
   refreshWindow();
   const st = { tipo: 'Valoración inicial', sede: R.current(), date: null, time: null, month: new Date(today.getFullYear(), today.getMonth(), 1) };
 
-  const slotsFor = d => {
-    const usadas = tomadas();
-    const base = (HORARIOS[d.getDay()] || []).filter(t => !usadas.includes(`${st.sede}|${ymd(d)}|${t}`));
+  const horariosDe = sede => {
+    const h = remote.cfg && remote.cfg.sedes && remote.cfg.sedes[sede] && remote.cfg.sedes[sede].horarios;
+    return h || HORARIOS;
+  };
+  const estaOcupada = (d, t) => {
+    if (BACKEND) { const s = remote.taken[st.sede]; return !!(s && s.has(`${ymd(d)}|${t}`)); }
+    return tomadas().includes(`${st.sede}|${ymd(d)}|${t}`);
+  };
+  /* Todas las franjas del día (las de hoy que ya pasaron no se muestran) */
+  const slotsAll = d => {
+    const base = horariosDe(st.sede)[d.getDay()] || [];
     if (!sameDay(d, new Date())) return base;
     const limit = new Date(Date.now() + HORAS_ANTICIPACION * 36e5);
     return base.filter(t => { const [h, m] = t.split(':').map(Number); const x = new Date(d); x.setHours(h, m, 0, 0); return x > limit; });
   };
-  const dayOk = d => d >= today && d <= last && slotsFor(d).length > 0;
+  const slotsFor = d => slotsAll(d).filter(t => !estaOcupada(d, t));
+  const diaLleno = d => { const f = remote.full[st.sede]; return !!(BACKEND && f && f.has(ymd(d))) || (slotsAll(d).length > 0 && slotsFor(d).length === 0); };
+  const dayOk = d => d >= today && d <= last && slotsFor(d).length > 0 && !diaLleno(d);
 
   /* ---- Tipo y sede ---- */
   function bindChips(id, key, after) {
@@ -61,8 +118,8 @@
     document.querySelectorAll('#bSede .chip').forEach(b => { const on = b.dataset.v === st.sede; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
   }
   bindChips('#bTipo', 'tipo', ticket);
-  bindChips('#bSede', 'sede', () => { R.setSede && R.setSede(st.sede); ticket(); });
-  document.addEventListener('sedechange', e => { st.sede = e.detail; paintChips(); ticket(); });
+  bindChips('#bSede', 'sede', () => { R.setSede && R.setSede(st.sede); st.time = null; ticket(); renderCal(); renderSlots(); refrescarRemoto(); });
+  document.addEventListener('sedechange', e => { if (e.detail === st.sede) return; st.sede = e.detail; st.time = null; paintChips(); ticket(); renderCal(); renderSlots(); refrescarRemoto(); });
 
   /* ---- Calendario ---- */
   function renderCal() {
@@ -79,9 +136,11 @@
       b.type = 'button'; b.className = 'day'; b.textContent = n;
       const ok = dayOk(d);
       b.disabled = !ok;
+      const lleno = d >= today && d <= last && diaLleno(d);
+      if (lleno) b.classList.add('lleno');
       if (sameDay(d, today)) b.classList.add('today');
       if (sameDay(d, st.date)) { b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); }
-      b.setAttribute('aria-label', `${DIAS[d.getDay()]} ${n} de ${MESES[m]}${ok ? '' : ', no disponible'}`);
+      b.setAttribute('aria-label', `${DIAS[d.getDay()]} ${n} de ${MESES[m]}${ok ? '' : lleno ? ', sin horas disponibles' : ', no disponible'}`);
       b.addEventListener('click', () => { st.date = d; st.time = null; renderCal(); renderSlots(); ticket(); });
       grid.appendChild(b);
     }
@@ -98,19 +157,36 @@
     if (!st.date) { $('#slotsTitle').textContent = 'Elige un día para ver los horarios'; return; }
     const d = st.date;
     $('#slotsTitle').textContent = `${DIAS[d.getDay()][0].toUpperCase() + DIAS[d.getDay()].slice(1)} ${d.getDate()} de ${MESES[d.getMonth()].toLowerCase()}`;
-    const list = slotsFor(d);
+    const list = slotsAll(d);
     const groups = [['Mañana', list.filter(t => +t.slice(0, 2) < 12)], ['Tarde', list.filter(t => +t.slice(0, 2) >= 12)]];
+    let hayOcupadas = false;
     groups.forEach(([name, items]) => {
       if (!items.length) return;
       const h = document.createElement('p'); h.className = 'slots__g'; h.textContent = name; box.appendChild(h);
       const row = document.createElement('div'); row.className = 'slots__row';
       items.forEach(t => {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'slot' + (st.time === t ? ' on' : ''); b.textContent = hhmm12(t);
-        b.addEventListener('click', () => { st.time = t; renderSlots(); ticket(); });
+        const b = document.createElement('button'); b.type = 'button';
+        const ocupada = estaOcupada(d, t);
+        b.className = 'slot' + (st.time === t ? ' on' : '') + (ocupada ? ' taken' : '');
+        b.textContent = hhmm12(t);
+        if (ocupada) {
+          hayOcupadas = true;
+          b.disabled = true;
+          b.title = 'Hora ocupada';
+          b.setAttribute('aria-label', `${hhmm12(t)}, hora ocupada`);
+          b.insertAdjacentHTML('beforeend', '<svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>');
+        } else {
+          b.addEventListener('click', () => { st.time = t; renderSlots(); ticket(); });
+        }
         row.appendChild(b);
       });
       box.appendChild(row);
     });
+    if (hayOcupadas) {
+      const lg = document.createElement('p'); lg.className = 'slots__legend';
+      lg.innerHTML = '<svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> Hora ocupada';
+      box.appendChild(lg);
+    }
   }
 
   /* ---- Ticket en vivo ---- */
@@ -193,11 +269,18 @@
     err('');
     const s = R.SEDES[st.sede];
     const fecha = `${DIAS[st.date.getDay()]} ${st.date.getDate()} de ${MESES[st.date.getMonth()].toLowerCase()} de ${st.date.getFullYear()}`;
-    guardarCita(`${st.sede}|${ymd(st.date)}|${st.time}`);
     const reserva = { nombre, telefono: tel, correo: mail, tipo: st.tipo, sede: s.name, fecha: ymd(st.date), hora: st.time };
+    const payload = { sede: st.sede, nombre, celular: tel, correo: mail, tipo: st.tipo, fecha: ymd(st.date), hora: st.time, hp: '' };
     const btn = $('#bGo'); btn.disabled = true; btn.textContent = 'Confirmando…';
-    try { await enviarReserva(reserva); } catch { btn.disabled = false; btn.textContent = 'Confirmar cita'; return err('No pudimos registrar tu cita. Inténtalo de nuevo o escríbenos por WhatsApp.'); }
+    let res;
+    try { res = await enviarReserva(payload); } catch { res = { ok: false, error: 'red' }; }
     btn.disabled = false; btn.textContent = 'Confirmar cita';
+    if (!res || !res.ok) {
+      const code = res && res.error;
+      if (code === 'hora_ocupada' || code === 'dia_lleno' || code === 'fuera_de_rango' || code === 'horario') { st.time = null; ticket(); refrescarRemoto(); }
+      return err(MENSAJES[code] || 'No pudimos registrar tu cita. Inténtalo de nuevo o escríbenos por WhatsApp.');
+    }
+    if (BACKEND) { (remote.taken[st.sede] = remote.taken[st.sede] || new Set()).add(`${ymd(st.date)}|${st.time}`); }
 
     $('#doneTxt').textContent = `${nombre}, te esperamos el ${fecha} a las ${hhmm12(st.time)} en la sede ${s.name} (${s.addr}). Tipo de cita: ${st.tipo}.`;
     const msg = `Hola, quiero confirmar mi cita.\nNombre: ${nombre}\nTipo: ${st.tipo}\nSede: ${s.name}\nFecha: ${fecha}\nHora: ${hhmm12(st.time)}`;
@@ -258,5 +341,9 @@
   addEventListener('focus', checkDay);
   setInterval(checkDay, 60000);
 
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refrescarRemoto(); });
+  setInterval(() => { if (!document.hidden) refrescarRemoto(); }, 120000);
+
   paintChips(); renderCal(); renderSlots(); ticket();
+  refrescarRemoto();
 })();

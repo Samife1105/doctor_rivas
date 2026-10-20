@@ -505,3 +505,12 @@ em{font-style:italic}
 .review figcaption .go{margin-left:auto;opacity:.5;transition:opacity .25s,transform .25s var(--ease)}
 @media (hover:hover) and (pointer:fine){.review:not(.review--cta):hover{transform:translateY(-4px);border-color:var(--ink)}.review:hover .go{opacity:1;transform:translate(2px,-2px)}}
 .review--cta .btn{position:relative;z-index:3}
+
+/* Horas ocupadas (candado) y días llenos */
+.slot{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.slot.taken{color:color-mix(in srgb,var(--ink) 38%,transparent);border-style:dashed;text-decoration:line-through;text-decoration-thickness:1px;cursor:not-allowed;background:color-mix(in srgb,var(--ink) 4%,transparent)}
+.slot.taken:hover{transform:none;border-color:var(--line)}
+.lock{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.slots__legend{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--mute);margin-top:12px}
+.day.lleno{position:relative}
+.day.lleno::after{content:"";position:absolute;left:50%;bottom:5px;width:14px;height:2px;border-radius:2px;background:currentColor;transform:translateX(-50%);opacity:.5}
