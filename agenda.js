@@ -231,11 +231,17 @@
   clearForm();
   addEventListener('pageshow', e => { if (e.persisted) clearForm(); });
 
-  $('#doneAgain').addEventListener('click', () => {
+  /* Limpiar: deja el agendador como nuevo (tipo, día, hora y datos); la sede elegida se conserva */
+  function resetBooking() {
     st.date = null; st.time = null; st.tipo = 'Valoración inicial';
-    clearForm(); $('#bookForm').hidden = false; $('#bDone').hidden = true;
+    st.month = new Date(today.getFullYear(), today.getMonth(), 1);
+    clearForm();
     document.querySelector('.ticket').classList.remove('full', 'booked');
     paintChips(); renderCal(); renderSlots(); ticket();
+  }
+  $('#bClear').addEventListener('click', resetBooking);
+  $('#doneAgain').addEventListener('click', () => {
+    resetBooking(); $('#bookForm').hidden = false; $('#bDone').hidden = true;
   });
 
   // Si la página queda abierta de un día para otro, la ventana de 30 días se actualiza sola
