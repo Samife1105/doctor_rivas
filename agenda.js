@@ -225,24 +225,57 @@
     telEl.value = t.slice(0, 10);
   });
 
+  /* ---- Correo: formato + dominio real (consulta DNS) ---- */
+  const TYPOS = { 'gmial.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gamil.com': 'gmail.com', 'gmail.co': 'gmail.com', 'gmail.con': 'gmail.com', 'hotmial.com': 'hotmail.com', 'hotmail.con': 'hotmail.com', 'outlok.com': 'outlook.com', 'yahoo.con': 'yahoo.com', 'yaho.com': 'yahoo.com' };
+  const dns = async (name, type) => {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 3500); // sin respuesta: no bloquear la cita
+    try {
+      const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`, { headers: { accept: 'application/dns-json' }, signal: ctl.signal });
+      return await r.json();
+    } finally { clearTimeout(t); }
+  };
+  const cache = {};
+  async function mailCheck(mail) {
+    if (!/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(mail) || /\.\./.test(mail)) return { ok: false, msg: 'Escribe un correo válido, por ejemplo nombre@gmail.com.' };
+    const dom = mail.split('@')[1];
+    if (TYPOS[dom]) return { ok: false, msg: `¿Quisiste escribir ${mail.split('@')[0]}@${TYPOS[dom]}?` };
+    if (cache[dom] !== undefined) return cache[dom];
+    try {
+      let j = await dns(dom, 'MX');
+      let ok = j.Status === 0 && Array.isArray(j.Answer) && j.Answer.some(a => a.type === 15);
+      if (!ok && j.Status === 0) { j = await dns(dom, 'A'); ok = j.Status === 0 && Array.isArray(j.Answer) && j.Answer.length > 0; }
+      return (cache[dom] = ok ? { ok: true } : { ok: false, msg: `El dominio "${dom}" no existe o no recibe correos. Revisa tu correo.` });
+    } catch { return { ok: true }; } // sin conexión al verificador: no bloquear
+  }
+  const mailEl = $('#bMail'), mailHint = $('#bMailHint');
+  mailEl.addEventListener('blur', async () => {
+    const v = mailEl.value.trim().toLowerCase();
+    mailEl.removeAttribute('aria-invalid'); mailHint.textContent = ''; mailHint.className = 'fhint full';
+    if (!v) return;
+    const r = await mailCheck(v);
+    if (r.ok) { mailHint.textContent = 'Correo verificado ✓'; mailHint.classList.add('ok'); }
+    else { mailEl.setAttribute('aria-invalid', 'true'); mailHint.textContent = r.msg; mailHint.classList.add('bad'); }
+  });
+  mailEl.addEventListener('input', () => { mailEl.removeAttribute('aria-invalid'); mailHint.textContent = ''; });
+
   /* ---- Confirmar ---- */
   const err = msg => { const e = $('#bErr'); e.textContent = msg || ''; e.hidden = !msg; if (msg) e.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
   let lastCard = null;
   const formEl = $('#bookForm');
   formEl.addEventListener('submit', e => { e.preventDefault(); confirmar().catch(x => { const g = $('#bGo'); g.disabled = false; g.textContent = 'Confirmar cita'; err('No pudimos continuar (' + (x && x.message || 'error') + '). Inténtalo de nuevo o escríbenos por WhatsApp.'); }); });
   async function confirmar() {
-    if ($('#bHp').value) return; // anti-spam
-    const nombre = $('#bNombre').value.trim(), tel = $('#bTel').value;
+    const nombre = $('#bNombre').value.trim(), tel = $('#bTel').value, mail = $('#bMail').value.trim().toLowerCase();
     if (!st.date || !st.time) return err('Elige el día y la hora de tu cita.');
     if (nombre.length < 3) { $('#bNombre').focus(); return err('Escribe tu nombre completo.'); }
     if (!/^3\d{9}$/.test(tel)) { $('#bTel').focus(); return err('Escribe tu celular con 10 números, empezando por 3 (ej. 3001234567).'); }
     const go = $('#bGo'); go.disabled = true; go.textContent = 'Revisando…';
     const libre = () => { go.disabled = false; go.textContent = 'Confirmar cita'; };
+    if (mail) { const r = await mailCheck(mail); if (!r.ok) { libre(); $('#bMail').focus(); return err(r.msg); } }
     if (!$('#bOk').checked) { libre(); return err('Debes aceptar el uso de tus datos para continuar.'); }
     err('');
     const s = R.SEDES[st.sede];
     const fecha = `${DIAS[st.date.getDay()]} ${st.date.getDate()} de ${MESES[st.date.getMonth()].toLowerCase()} de ${st.date.getFullYear()}`;
-    const payload = { sede: st.sede, nombre, celular: tel, tipo: st.tipo, fecha: ymd(st.date), hora: st.time, hp: '' };
+    const payload = { sede: st.sede, nombre, celular: tel, correo: mail, tipo: st.tipo, fecha: ymd(st.date), hora: st.time, hp: $('#bHp').value };
     const card = { nombre, tipo: st.tipo, sede: s.name, addr: s.addr, dia: st.date.getDate(), mes: `${MESES[st.date.getMonth()]} ${st.date.getFullYear()}`, sem: DIAS[st.date.getDay()], hora: hhmm12(st.time) };
     const btn = $('#bGo'); btn.disabled = true; btn.textContent = 'Confirmando…';
     let res;
@@ -326,6 +359,7 @@ Hora: ${hhmm12(st.time)}`;
 
   function clearForm() {
     $('#bookForm').reset();
+    mailEl.removeAttribute('aria-invalid'); mailHint.textContent = ''; mailHint.className = 'fhint full';
     err('');
   }
   clearForm();
