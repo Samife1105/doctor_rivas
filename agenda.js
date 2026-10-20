@@ -61,15 +61,28 @@
 
   async function enviarReserva(p) {
     if (!BACKEND) { guardarCita(`${p.sede}|${p.fecha}|${p.hora}`); return { ok: true, local: true }; }
-    // Se envía por GET (como la lectura de horarios): en iPhone/Safari el POST hacia Google falla; el GET sí llega
-    return pedir(`${BACKEND}?accion=reservar&d=${encodeURIComponent(JSON.stringify(p))}&_=${Date.now()}`, {}, 30000);
+    // Primero por GET (como la lectura de horarios). Si el celular no logra conectar, se reintenta por POST.
+    try {
+      return await pedir(`${BACKEND}?accion=reservar&d=${encodeURIComponent(JSON.stringify(p))}&_=${Date.now()}`, {}, 25000);
+    } catch (e1) {
+      try {
+        const r = await pedir(BACKEND, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(p) }, 25000);
+        if (r && r.error === 'hora_ocupada') return { ok: true, recuperada: true };   // el primer intento sí llegó: la hora es de esta persona
+        return r;
+      } catch (e2) {
+        return { ok: false, error: 'red', detalle: `${e1 && e1.name}: ${e1 && e1.message} / ${e2 && e2.name}: ${e2 && e2.message}` };
+      }
+    }
   }
   const MENSAJES = {
     hora_ocupada: 'Esa hora acaba de ser tomada por otra persona. Elige otra, por favor.',
     dia_lleno: 'Ese día ya no tiene horas disponibles. Elige otro día.',
     demasiadas_citas: 'Ya tienes varias citas pendientes con este celular. Escríbenos por WhatsApp para ayudarte.',
     fuera_de_rango: 'Esa hora ya no está disponible. Elige otra.',
-    horario: 'Esa hora no está dentro del horario de la sede. Elige otra.'
+    horario: 'Esa hora no está dentro del horario de la sede. Elige otra.',
+    celular: 'Revisa tu celular: 10 números, empezando por 3.',
+    nombre: 'Revisa tu nombre completo.',
+    correo: 'Revisa tu correo: no parece válido.'
   };
 
   const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -280,12 +293,12 @@
     const card = { nombre, tipo: st.tipo, sede: s.name, addr: s.addr, dia: st.date.getDate(), mes: `${MESES[st.date.getMonth()]} ${st.date.getFullYear()}`, sem: DIAS[st.date.getDay()], hora: hhmm12(st.time) };
     const btn = $('#bGo'); btn.disabled = true; btn.textContent = 'Confirmando…';
     let res;
-    try { res = await enviarReserva(payload); } catch { res = { ok: false, error: 'red' }; }
+    try { res = await enviarReserva(payload); } catch (x) { res = { ok: false, error: 'red', detalle: String(x) }; }
     btn.disabled = false; btn.textContent = 'Confirmar cita';
     if (!res || !res.ok) {
       const code = res && res.error;
       if (code === 'hora_ocupada' || code === 'dia_lleno' || code === 'fuera_de_rango' || code === 'horario') { st.time = null; ticket(); refrescarRemoto(); }
-      return err(MENSAJES[code] || 'No pudimos registrar tu cita. Inténtalo de nuevo o escríbenos por WhatsApp.');
+      return err(MENSAJES[code] || `No pudimos registrar tu cita. Inténtalo de nuevo o escríbenos por WhatsApp. (Detalle: ${code || 'sin respuesta'}${res && res.detalle ? ' · ' + String(res.detalle).slice(0, 120) : ''})`);
     }
     if (BACKEND) { (remote.taken[st.sede] = remote.taken[st.sede] || new Set()).add(`${ymd(st.date)}|${st.time}`); }
 
