@@ -1,12 +1,11 @@
 :root{
-  --ink:#0a0a0a; --ink2:#1a1a1a; --paper:#f1f0ed; --soft:#e7e6e2; --card:#fbfaf8; --line:#d9d8d3; --mute:#5f5e5a;
+  --ink:#0a0a0a; --ink2:#1a1a1a; --paper:#f8f6f1; --soft:#efece5; --card:#fdfcf9; --line:#e0dcd2; --mute:#66645e;
   --serif:'Instrument Serif',Georgia,serif; --sans:'Inter',system-ui,sans-serif;
   --r:20px; --ease:cubic-bezier(.23,1,.32,1);
-  --marble-light:url(assets/marble-light.webp); --marble-dark:url(assets/marble-dark.webp);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;scroll-padding-top:84px}
-body{font-family:var(--sans);color:var(--ink);background:var(--paper) var(--marble-light) 0 0/1024px auto repeat;line-height:1.6;-webkit-font-smoothing:antialiased}
+body{font-family:var(--sans);color:var(--ink);background:var(--paper);line-height:1.6;-webkit-font-smoothing:antialiased}
 body.lock{overflow:hidden}
 img,svg{display:block;max-width:100%}
 a{color:inherit;text-decoration:none}
@@ -38,7 +37,7 @@ em{font-style:italic}
 .btn--sm{padding:10px 20px;min-height:42px;font-size:.88rem;white-space:nowrap}
 
 /* GATE */
-.gate{position:fixed;inset:0;z-index:300;background:var(--ink) var(--marble-dark) 0 0/1024px auto repeat;color:#fff;display:grid;place-items:center;padding:24px;overflow:auto;
+.gate{position:fixed;inset:0;z-index:300;background:var(--ink);color:#fff;display:grid;place-items:center;padding:24px;overflow:auto;
   clip-path:circle(150% at var(--cx,50%) var(--cy,50%));transition:clip-path .75s var(--ease),visibility 0s}
 .gate.off{clip-path:circle(0% at var(--cx,50%) var(--cy,50%));visibility:hidden;pointer-events:none;transition:clip-path .75s var(--ease),visibility 0s .75s}
 .gate::before{content:"";position:absolute;inset:0;background:radial-gradient(60% 50% at 50% 0,rgba(255,255,255,.12),transparent 70%);pointer-events:none}
@@ -59,7 +58,7 @@ em{font-style:italic}
 
 /* NAV */
 .nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px max(20px,calc((100% - 1180px)/2));transition:background .3s,box-shadow .3s}
-.nav.scrolled{background:rgba(241,240,237,.86);backdrop-filter:blur(14px);box-shadow:0 1px 0 var(--line)}
+.nav.scrolled{background:rgba(248,246,241,.88);backdrop-filter:blur(14px);box-shadow:0 1px 0 var(--line)}
 .logo{font-family:var(--serif);font-size:1.5rem;line-height:1;display:flex;flex-direction:column}
 .logo small{font-family:var(--sans);font-size:.55rem;letter-spacing:.28em;text-transform:uppercase;color:var(--mute);margin-top:4px}
 .logo--lt small{color:rgba(255,255,255,.55)}
@@ -97,8 +96,8 @@ em{font-style:italic}
 
 /* SECTIONS */
 .sec{padding:clamp(72px,10vw,130px) 0}
-.sec--soft{background:linear-gradient(rgba(205,204,199,.4),rgba(205,204,199,.4)),var(--marble-light) 300px 200px/1024px auto}
-.sec--dark{background:var(--ink) var(--marble-dark) 0 0/1024px auto repeat;color:#fff}
+.sec--soft{background:var(--soft)}
+.sec--dark{background:var(--ink);color:#fff}
 .sec__head{margin-bottom:52px;max-width:760px}
 .sec__head em,.sec--dark em{color:var(--mute)}
 .sec--dark em{color:rgba(255,255,255,.55)}
@@ -344,6 +343,21 @@ em{font-style:italic}
 .vids{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
 .vid{aspect-ratio:9/16;max-height:640px;width:100%;justify-self:center}
 .sec__cta{margin-top:40px}
+
+/* El doctor: foto + texto */
+.doc{display:grid;grid-template-columns:.8fr 1.2fr;gap:clamp(32px,5vw,72px);align-items:center}
+.doc__photo{position:relative}
+.doc__img{aspect-ratio:4/5;width:100%;background:#1b1b1b}
+.sec--dark .ph{color:#a8a8a4;border-color:rgba(255,255,255,.28)}
+.sec--dark .ph b{color:#fff}
+.doc__tag{position:absolute;left:14px;right:14px;bottom:14px;z-index:2;display:grid;gap:2px;background:rgba(10,10,10,.78);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.14);color:#fff;padding:14px 18px;border-radius:14px}
+.doc__tag b{font-family:var(--serif);font-weight:400;font-size:1.5rem;line-height:1}
+.doc__tag small{font-size:.78rem;color:rgba(255,255,255,.65)}
+.stats--row{grid-template-columns:repeat(4,1fr);margin:28px 0 30px}
+.stats--row div{padding:20px 14px;font-size:2.3rem}
+.stats--row span{font-size:.72rem}
+@media (max-width:980px){.doc{grid-template-columns:1fr}.doc__photo{max-width:420px}}
+@media (max-width:640px){.stats--row{grid-template-columns:1fr 1fr}.stats--row div{font-size:2.6rem}}
 
 /* Así trabajamos: bento */
 .bento{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:minmax(190px,16vw);gap:16px}
