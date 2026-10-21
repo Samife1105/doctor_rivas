@@ -32,7 +32,9 @@
   function setSede(id) {
     if (!SEDES[id]) return;
     current = id;
+    document.documentElement.dataset.sede = id;   // el CSS muestra solo el contenido marcado con data-for="esta-sede"
     const s = SEDES[id];
+    const tit = $('#sedeTitulo'); if (tit) tit.textContent = s.name;
     $('#sedeChipName').textContent = s.name;
     $$('[data-wa]').forEach(a => { a.href = waUrl(id, a.dataset.msg); });
     $$('.tabs button').forEach(b => {
@@ -86,6 +88,7 @@
     origin(b); chosen = true; setSede(b.dataset.sede); closeGate();
   }));
   $('#sedeChip').addEventListener('click', e => { origin(e.currentTarget); openGate(); });
+  const cambiar = $('#cambiarSede'); if (cambiar) cambiar.addEventListener('click', () => $('#sedeChip').click());
   $$('.tabs button').forEach(b => b.addEventListener('click', () => { chosen = true; setSede(b.dataset.sede); }));
 
   // Cada vez que entra, el visitante debe elegir su sede (no se recuerda la anterior).

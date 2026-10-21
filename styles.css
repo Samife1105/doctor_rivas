@@ -548,3 +548,10 @@ em{font-style:italic}
 @media(max-width:380px){.cal__grid,.cal__dow{gap:2px}.day{font-size:.85rem}}
 
 #gate:focus,#gate:focus-visible{outline:none}
+
+/* Contenido por sede: solo se ve lo de la sede elegida */
+html[data-sede="yopal"] [data-for]:not([data-for~="yopal"]),
+html[data-sede="aguazul"] [data-for]:not([data-for~="aguazul"]),
+html[data-sede="bogota"] [data-for]:not([data-for~="bogota"]){display:none !important}
+.linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--accent);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.tabs[hidden]{display:none !important}
