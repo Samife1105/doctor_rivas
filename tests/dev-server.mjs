@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import handler from '../api/agenda.mjs';
 const root = path.resolve(new URL('..', import.meta.url).pathname.replace(/^\/([A-Z]:)/i, '$1'));
+const port = Number(process.env.PORT || 4173);
 const mock = process.argv.includes('--mock');
 const bookings = new Map();
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg' };
@@ -31,4 +32,4 @@ http.createServer(async (req, res) => {
     res.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream');
     res.end(await fs.readFile(file));
   } catch { res.statusCode = 404; res.end('Not found'); }
-}).listen(4173, '127.0.0.1', () => console.log(`QA local: http://127.0.0.1:4173 (${mock ? 'simulado, sin escrituras' : 'backend real'})`));
+}).listen(port, '127.0.0.1', () => console.log(`QA local: http://127.0.0.1:${port} (${mock ? 'simulado, sin escrituras' : 'backend real'})`));

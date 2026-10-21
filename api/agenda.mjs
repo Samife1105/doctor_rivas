@@ -1,5 +1,5 @@
 // El navegador nunca envía datos del paciente en una URL ni contacta Google directamente.
-const DEFAULT_BACKEND = 'https://script.google.com/macros/s/AKfycbzAsw1Y8wBMGRr596xvukb9BBtHpeDPNfakJ_QZJnW8n5-c2RH6sM6TePqG5mM56ec/exec';
+const DEFAULT_BACKEND = 'https://script.google.com/macros/s/AKfycby4iKyjy3-GCIXOCrQiejxX9NBrWa3mlQ8N2vRJHyUlAiKTXAqHaowxNzO_sWMd5pkD/exec';
 const SEDES = new Set(['yopal', 'aguazul', 'bogota']);
 const TIPOS = new Set(['Valoración inicial', 'Diseño de sonrisa', 'Implantes dentales', 'Ortodoncia invisible']);
 export default async function handler(req, res) {
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
       return answer(200, { ok: true, id: body.id, recuperada: body.recuperada === true, correo: ['enviado', 'fallido', 'no_solicitado'].includes(body.correo) ? body.correo : 'no_comprobado' });
     }
     if (req.query.accion === 'config') {
-      if (!body.sedes || !Number.isInteger(body.dias) || !Number.isFinite(body.horasMin)) throw new Error('config');
+      if (body.apiVersion !== 2 || !body.sedes || !Number.isInteger(body.dias) || !Number.isFinite(body.horasMin)) throw new Error('config');
       // Reloj del servidor: no depende del reloj/zona configurados en el teléfono.
       return answer(200, { ...body, ahora: Date.now(), zona: 'America/Bogota' });
     }

@@ -6,7 +6,7 @@ import { JSDOM } from 'jsdom';
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const script = fs.readFileSync(new URL('../agenda.js', import.meta.url), 'utf8');
 const horarios = Object.fromEntries(Array.from({ length: 7 }, (_, i) => [i, i === 0 ? [] : ['08:00', '08:30', '09:00']]));
-const cfg = { ok: true, dias: 30, horasMin: 2, ahora: Date.parse('2026-10-20T17:00:00Z'), sedes: Object.fromEntries(['yopal', 'aguazul', 'bogota'].map(s => [s, { horarios }])) };
+const cfg = { ok: true, apiVersion: 2, dias: 30, horasMin: 2, ahora: Date.parse('2026-10-20T17:00:00Z'), sedes: Object.fromEntries(['yopal', 'aguazul', 'bogota'].map(s => [s, { horarios }])) };
 const settle = async () => { for (let i = 0; i < 8; i++) await new Promise(r => setImmediate(r)); };
 async function setup(reserve = async () => ({ ok: true, id: 'C-QA' }), failHours = false) {
   const dom = new JSDOM(html, { url: 'https://qa.example/', runScripts: 'outside-only', pretendToBeVisual: true });

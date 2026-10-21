@@ -58,7 +58,7 @@
         if (!remote.cfg || performance.now() - remote.configAt > 300000) {
           if (!configPromise) configPromise = pedir(`${API}?accion=config`).finally(() => { configPromise = null; });
           const c = await configPromise;
-          if (!c.ok || !c.sedes || !c.sedes[sede] || !Number.isInteger(c.dias) || c.dias < 1 || !Number.isFinite(c.horasMin)) throw new Error('config');
+          if (!c.ok || c.apiVersion !== 2 || !c.sedes || !c.sedes[sede] || !Number.isInteger(c.dias) || c.dias < 1 || !Number.isFinite(c.horasMin)) throw new Error('config');
           remote.cfg = c; remote.configAt = performance.now();
           if (Number.isFinite(c.ahora)) remote.clock = { epoch: c.ahora, tick: performance.now() };
           DIAS_ADELANTE = c.dias; HORAS_ANTICIPACION = c.horasMin;
@@ -332,7 +332,7 @@
       res = await enviarReserva(payload);
       if (!res || !res.ok) {
         const code = res && res.error;
-        if (['hora_ocupada', 'dia_lleno', 'fuera_de_rango', 'horario'].includes(code)) { st.time = null; ticket(); }
+        if (['hora_ocupada', 'dia_lleno', 'fuera_de_rango', 'horario'].includes(code)) { st.time = null; ticket(); refrescarRemoto(); }
         err(MENSAJES[code] || MENSAJES.servidor);
         return;
       }
@@ -344,7 +344,7 @@
       $('#doneRef').textContent = res.id ? `Referencia: ${res.id}` : 'Confirma la cita por WhatsApp.';
       $('#doneNotice').textContent = res.local ? 'Confirma tu solicitud por WhatsApp para que la sede la registre.' : res.correo === 'fallido' ? 'Tu cita quedó guardada, pero no pudimos enviar el correo. Guarda tu tarjeta o contáctanos por WhatsApp.' : 'Tu cita quedó guardada. Guarda tu tarjeta como comprobante. Si indicaste correo, revisa también spam; puedes confirmar su recepción con la sede.';
       const msg = `Hola, quiero confirmar mi cita.\nNombre: ${nombre}\nTipo: ${selection.tipo}\nSede: ${s.name}\nFecha: ${fecha}\nHora: ${hora}\nReferencia: ${res.id || 'Solicitud por WhatsApp'}`;
-      lastCard = { nombre, tipo: selection.tipo, sede: s.name, addr: s.addr, dia: d.getDate(), mes: `${MESES[d.getMonth()]} ${d.getFullYear()}`, sem: DIAS[d.getDay()], hora };
+      lastCard = { nombre, tipo: selection.tipo, sede: s.name, addr: s.addr, dia: d.getDate(), mes: `${MESES[d.getMonth()]} ${d.getFullYear()}`, sem: DIAS[d.getDay()], hora, id: res.id || '' };
       $('#doneWa').href = R.waUrl(selection.sede, msg);
       clearForm(); pendiente = null;
       $('#bookForm').hidden = true; $('#bDone').hidden = false;
@@ -390,24 +390,30 @@
       g.fillStyle = '#5c6763'; g.font = `600 24px ${SANS}`; g.fillText(k, 110, y + 20);
       g.fillStyle = '#0b0c0c'; g.font = `600 32px ${SANS}`;
       let px = 32; while (g.measureText(v).width > 550 && px > 22) { px -= 2; g.font = `600 ${px}px ${SANS}`; }
-      g.fillText(v, 420, y + 20);
+      let text = String(v);
+      while (text.length > 1 && g.measureText(text + '…').width > 550) text = text.slice(0, -1);
+      g.fillText(text === String(v) ? text : text + '…', 420, y + 20);
       y += 92;
     });
     g.fillStyle = '#5c6763'; g.font = `400 28px ${SANS}`;
     g.fillText('Confirma tu asistencia por WhatsApp. ¡Te esperamos!', 110, 1180);
+    if (d.id) { g.font = `400 19px ${SANS}`; g.fillText('Referencia: ' + d.id, 110, 1230); }
     return cv;
   }
   $('#doneCard').addEventListener('click', async () => {
     if (!lastCard) return;
-    try { await document.fonts.ready; } catch { /* sin fuentes web: se usa la de respaldo */ }
-    const cv = dibujarTarjeta(lastCard);
-    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
-    if (!blob) { err('No pudimos generar la tarjeta. Conserva la referencia de tu cita.'); return; }
-    const file = new File([blob], 'mi-cita-dr-rivas.png', { type: 'image/png' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], text: 'Mi cita en la Clínica Dr. Rivas' }); return; } catch { /* cancelado: se descarga */ }
-    }
-    const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    const button = $('#doneCard'), status = $('#doneCardStatus');
+    button.disabled = true; status.textContent = '';
+    try {
+      try { await document.fonts.ready; } catch { /* usar fuentes de respaldo */ }
+      const cv = dibujarTarjeta(lastCard);
+      const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+      if (!blob) throw new Error('imagen');
+      const file = new File([blob], 'mi-cita-dr-rivas.png', { type: 'image/png' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    } catch { status.textContent = 'No pudimos generar la imagen. Conserva la referencia de tu cita o toma una captura.'; }
+    finally { button.disabled = false; }
   });
 
   function clearForm() {
@@ -424,7 +430,7 @@
     pendiente = null;
     st.date = null; st.time = null; st.tipo = 'Valoración inicial';
     st.month = new Date(today.getFullYear(), today.getMonth(), 1);
-    clearForm();
+    clearForm(); $('#doneCardStatus').textContent = '';
     document.querySelector('.ticket').classList.remove('full', 'booked');
     paintChips(); renderCal(); renderSlots(); ticket();
   }
