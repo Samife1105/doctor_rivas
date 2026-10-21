@@ -49,7 +49,7 @@
     $('#sWa').href = waUrl(id);
     $('#sWaTxt').textContent = s.phone;
     $('#sMap').href = s.maps;
-    $('#moreReviews').href = s.maps;
+    const mr = $('#moreReviews'); if (mr) mr.href = s.maps;
     $$('[data-reviews]').forEach(a => { a.href = s.maps; });
     $('#mapFrame').src = `https://www.google.com/maps?q=${encodeURIComponent(s.q)}&z=16&hl=es&output=embed`;
     $('#formSede').value = id;

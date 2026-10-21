@@ -555,3 +555,4 @@ html[data-sede="aguazul"] [data-for]:not([data-for~="aguazul"]),
 html[data-sede="bogota"] [data-for]:not([data-for~="bogota"]){display:none !important}
 .linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--accent);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .tabs[hidden]{display:none !important}
+.reviews--solo{display:block;max-width:560px}
