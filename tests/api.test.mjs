@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import handler from '../api/agenda.mjs';
-const payload = { sede: 'yopal', nombre: 'Paciente QA', celular: '3000000000', correo: '', tipo: 'Valoración inicial', fecha: '20261022', hora: '08:00', hp: '', sesion: 'b'.repeat(32), token: 'c'.repeat(32), operacion: 'a'.repeat(32) };
+const payload = { sede: 'yopal', nombre: 'Paciente QA', celular: '3000000000', correo: 'paciente@example.com', tipo: 'Valoración inicial', fecha: '20261022', hora: '08:00', hp: '', sesion: 'b'.repeat(32), token: 'c'.repeat(32), operacion: 'a'.repeat(32) };
 async function run(req = {}, upstream = { ok: true, id: 'C-QA' }, status = 200) {
   let call; const original = global.fetch;
   global.fetch = async (url, options) => { call = { url, options }; if (upstream instanceof Error) throw upstream; return { ok: status < 400, json: async () => upstream }; };
@@ -28,3 +28,4 @@ test('Ampliar exige operación idempotente y liberar admite respuesta sin ID cl�
   const valid = await run({ body: { ...body, operacion: payload.operacion } }, { ok: true, token: payload.token, vence: Date.now() + 300000, ampliaciones: 1 }); assert.equal(valid.res.body.ok, true);
   const release = await run({ body: { ...body, accion: 'liberar' } }, { ok: true, liberado: true }); assert.equal(release.res.body.liberado, true);
 });
+test('El correo es obligatorio: sin correo el proxy rechaza la reserva antes de Google', async () => { const { res, call } = await run({ body: { ...payload, correo: '' } }); assert.equal(res.code, 400); assert.equal(res.body.error, 'correo'); assert.equal(call, undefined); });

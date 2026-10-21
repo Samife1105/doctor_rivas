@@ -377,6 +377,7 @@
     if (BACKEND && !remote.ready[st.sede]) return err('Actualiza los horarios antes de confirmar tu cita.');
     if (nombre.length < 3 || nombre.length > 80) { $('#bNombre').focus(); return err('Escribe tu nombre completo, entre 3 y 80 caracteres.'); }
     if (!/^3\d{9}$/.test(tel)) { $('#bTel').focus(); return err('Escribe tu celular con 10 números, empezando por 3 (ej. 3001234567).'); }
+    if (!mail) { $('#bMail').focus(); return err('Escribe tu correo: es obligatorio para enviarte la confirmación de tu cita.'); }
     if (!$('#bOk').checked) return err('Debes aceptar el uso de tus datos para continuar.');
     // Capturar TODO antes del primer await; el comprobante siempre usa estos datos.
     const selection = { sede: st.sede, date: new Date(st.date), time: st.time, tipo: st.tipo };
@@ -388,7 +389,7 @@
     setSending(true); err('');
     let res;
     try {
-      const check = mail ? await mailCheck(mail) : { ok: true };
+      const check = await mailCheck(mail);
       if (!check.ok) { err(check.msg); return; }
       if (BACKEND) {
         if (apartado?.renovando) await apartado.renovando;

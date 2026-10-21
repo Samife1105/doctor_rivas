@@ -25,7 +25,7 @@ async function setup(reserve = async () => ({ ok: true, id: 'C-QA' }), failHours
   };
   w.eval(script); await settle();
   const choose = () => { [...d.querySelectorAll('#calGrid button')].find(b => !b.disabled).click(); [...d.querySelectorAll('.slot')].find(b => !b.disabled).click(); };
-  const fill = () => { d.querySelector('#bNombre').value = 'Paciente QA'; d.querySelector('#bTel').value = '+57 300 000 0000'; d.querySelector('#bOk').checked = true; };
+  const fill = () => { d.querySelector('#bNombre').value = 'Paciente QA'; d.querySelector('#bTel').value = '+57 300 000 0000'; d.querySelector('#bMail').value = 'paciente@example.com'; d.querySelector('#bOk').checked = true; };
   const submit = () => d.querySelector('#bookForm').dispatchEvent(new w.Event('submit', { cancelable: true }));
   return { dom, d, w, calls, holdCalls, choose, fill, submit, advance: ms => { tick += ms; holdTick(); } };
 }

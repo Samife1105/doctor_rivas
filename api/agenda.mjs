@@ -47,7 +47,7 @@ export default async function handler(req, res) {
     if (!TIPOS.has(d.tipo)) return answer(400, { ok: false, error: 'tipo' });
     if (typeof d.nombre !== 'string' || d.nombre.trim().length < 3 || d.nombre.trim().length > 80) return answer(400, { ok: false, error: 'nombre' });
     if (!/^3\d{9}$/.test(d.celular)) return answer(400, { ok: false, error: 'celular' });
-    if (typeof d.correo !== 'string' || d.correo.length > 254 || (d.correo && (!/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(d.correo) || /\.\./.test(d.correo)))) return answer(400, { ok: false, error: 'correo' });
+    if (typeof d.correo !== 'string' || d.correo.length < 6 || d.correo.length > 254 || (d.correo && (!/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(d.correo) || /\.\./.test(d.correo)))) return answer(400, { ok: false, error: 'correo' });
     if (!/^\d{8}$/.test(d.fecha) || !/^\d{2}:\d{2}$/.test(d.hora)) return answer(400, { ok: false, error: 'fecha' });
     if (!/^[a-f0-9]{32}$/.test(d.operacion)) return answer(400, { ok: false, error: 'operacion' });
     // Lista explícita: no reenviar claves arbitrarias ni aceptar un destino del cliente.
