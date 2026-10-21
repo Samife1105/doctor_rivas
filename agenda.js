@@ -58,7 +58,7 @@
         if (!remote.cfg || performance.now() - remote.configAt > 300000) {
           if (!configPromise) configPromise = pedir(`${API}?accion=config`).finally(() => { configPromise = null; });
           const c = await configPromise;
-          if (!c.ok || c.apiVersion !== 2 || !c.sedes || !c.sedes[sede] || !Number.isInteger(c.dias) || c.dias < 1 || !Number.isFinite(c.horasMin)) throw new Error('config');
+          if (!c.ok || c.apiVersion !== 3 || !c.apartados || !c.sedes || !c.sedes[sede] || !Number.isInteger(c.dias) || c.dias < 1 || !Number.isFinite(c.horasMin)) throw new Error('config');
           remote.cfg = c; remote.configAt = performance.now();
           if (Number.isFinite(c.ahora)) remote.clock = { epoch: c.ahora, tick: performance.now() };
           DIAS_ADELANTE = c.dias; HORAS_ANTICIPACION = c.horasMin;
@@ -77,7 +77,7 @@
       } finally {
         if (sede === st.sede) {
           $('#slotsBox').removeAttribute('aria-busy');
-          if (!enviando && st.date && (!dayOk(st.date) || (st.time && estaOcupada(st.date, st.time)))) { st.time = null; ticket(); }
+          if (!enviando && !pendiente?.incierta && st.date && (!dayOk(st.date) || (st.time && estaOcupada(st.date, st.time)))) { st.time = null; ticket(); }
           if (!enviando) { renderCal(); renderSlots(); }
         }
       }
@@ -94,6 +94,8 @@
   }
   const MENSAJES = {
     hora_ocupada: 'Esa hora acaba de ser tomada por otra persona. Elige otra, por favor.',
+    apartado_vencido: 'El apartado venció. Tus datos se conservan: vuelve a elegir una hora para continuar.',
+    ampliaciones: 'Alcanzaste las diez ampliaciones. Tus datos se conservan; puedes volver a elegir una hora.',
     dia_lleno: 'Ese día ya no tiene horas disponibles. Elige otro día.',
     demasiadas_citas: 'Ya tienes varias citas pendientes con este celular. Escríbenos por WhatsApp para ayudarte.',
     fuera_de_rango: 'Esa hora ya no está disponible. Elige otra.',
@@ -131,6 +133,7 @@
     return h || HORARIOS;
   };
   const estaOcupada = (d, t) => {
+    if (apartado && apartado.vence > serverEpoch() && apartado.sede === st.sede && apartado.fecha === ymd(d) && apartado.hora === t) return false;
     if (BACKEND) { const s = remote.taken[st.sede]; return !!(s && s.has(`${ymd(d)}|${t}`)); }
     return tomadas().includes(`${st.sede}|${ymd(d)}|${t}`);
   };
@@ -142,7 +145,7 @@
     return base.filter(t => { const [h, m] = t.split(':').map(Number); const x = new Date(d); x.setHours(h, m, 0, 0); return x > limit; });
   };
   const slotsFor = d => slotsAll(d).filter(t => !estaOcupada(d, t));
-  const diaLleno = d => { const f = remote.full[st.sede]; return !!(BACKEND && f && f.has(ymd(d))) || (slotsAll(d).length > 0 && slotsFor(d).length === 0); };
+  const diaLleno = d => { if (apartado && apartado.vence > serverEpoch() && apartado.sede === st.sede && apartado.fecha === ymd(d)) return false; const f = remote.full[st.sede]; return !!(BACKEND && f && f.has(ymd(d))) || (slotsAll(d).length > 0 && slotsFor(d).length === 0); };
   const dayOk = d => (!BACKEND || remote.ready[st.sede]) && d >= today && d <= last && slotsFor(d).length > 0 && !diaLleno(d);
 
   /* ---- Tipo y sede ---- */
@@ -166,8 +169,8 @@
     document.querySelectorAll('#bSede .chip').forEach(b => { const on = b.dataset.v === st.sede; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); b.tabIndex = on ? 0 : -1; });
   }
   bindChips('#bTipo', 'tipo', ticket);
-  bindChips('#bSede', 'sede', () => { R.setSede && R.setSede(st.sede); st.time = null; ticket(); renderCal(); renderSlots(); refrescarRemoto(); });
-  document.addEventListener('sedechange', e => { if (enviando || e.detail === st.sede) return; st.sede = e.detail; st.time = null; paintChips(); ticket(); renderCal(); renderSlots(); refrescarRemoto(); });
+  bindChips('#bSede', 'sede', () => { soltarApartado(); R.setSede && R.setSede(st.sede); st.time = null; ticket(); renderCal(); renderSlots(); refrescarRemoto(); });
+  document.addEventListener('sedechange', e => { if (enviando || e.detail === st.sede) return; soltarApartado(); st.sede = e.detail; st.time = null; paintChips(); ticket(); renderCal(); renderSlots(); refrescarRemoto(); });
 
   /* ---- Calendario ---- */
   function renderCal() {
@@ -190,7 +193,7 @@
       b.setAttribute('aria-pressed', String(sameDay(d, st.date) || false));
       if (sameDay(d, st.date)) b.classList.add('on');
       b.setAttribute('aria-label', `${DIAS[d.getDay()]} ${n} de ${MESES[m]}${ok ? '' : lleno ? ', sin horas disponibles' : ', no disponible'}`);
-      b.addEventListener('click', () => { if (enviando) return; st.date = d; st.time = null; renderCal(); renderSlots(); ticket(); });
+      b.addEventListener('click', () => { if (enviando) return; soltarApartado(); st.date = d; st.time = null; renderCal(); renderSlots(); ticket(); });
       grid.appendChild(b);
     }
     const prevEnd = new Date(y, m, 0);
@@ -225,7 +228,7 @@
           b.setAttribute('aria-label', `${hhmm12(t)}, hora ocupada`);
           b.insertAdjacentHTML('beforeend', '<svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>');
         } else {
-          b.addEventListener('click', () => { if (enviando) return; st.time = t; renderSlots(); ticket(); });
+          b.addEventListener('click', () => { if (enviando) return; elegirHora(t); });
         }
         row.appendChild(b);
       });
@@ -304,6 +307,72 @@
     const bytes = new Uint8Array(16); crypto.getRandomValues(bytes);
     return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
   };
+  const serverEpoch = () => remote.clock ? remote.clock.epoch + performance.now() - remote.clock.tick : Date.now();
+  let sesion;
+  try { sesion = sessionStorage.getItem('rivas.apartado.sesion'); } catch {}
+  if (!/^[a-f0-9]{32}$/.test(sesion || '')) {
+    sesion = operationId();
+    try { sessionStorage.setItem('rivas.apartado.sesion', sesion); } catch {}
+  }
+  let apartado = null, avisoTiempo = false, extensionPendiente = null;
+  function soltarApartado() {
+    const anterior = apartado; apartado = null; avisoTiempo = false; extensionPendiente = null;
+    $('#holdBox').hidden = true;
+    if (!anterior) return;
+    // Si cerrar la pestaña impide esta petición, el servidor libera por vencimiento.
+    enviarReserva({ accion: 'liberar', sesion, token: anterior.token });
+    remote.taken[anterior.sede]?.delete(`${anterior.fecha}|${anterior.hora}`);
+  }
+  function pintarApartado() {
+    if (!apartado || enviando) return;
+    const segundos = Math.max(0, Math.ceil((apartado.vence - serverEpoch()) / 1000));
+    $('#holdClock').textContent = `Tiempo de apartado: ${pad(Math.floor(segundos / 60))}:${pad(segundos % 60)}. Hora de Colombia.`;
+    if (!segundos) {
+      apartado = null; if (!pendiente?.incierta) st.time = null; ticket(); renderSlots();
+      $('#holdClock').textContent = '';
+      $('#holdMessage').textContent = pendiente?.incierta ? 'Tu apartado venció y la confirmación anterior es incierta. Reintenta con los mismos datos para comprobarla antes de elegir otra hora.' : 'Tu apartado venció. Tus datos se conservan. Elige una hora para continuar.';
+      $('#holdExtend').hidden = true;
+      refrescarRemoto();
+    } else if (segundos <= 60 && !avisoTiempo) {
+      avisoTiempo = true;
+      $('#holdMessage').textContent = apartado.puedeAmpliar ? 'Queda un minuto o menos. Puedes ampliar el tiempo con el botón «Necesito más tiempo».' : 'Queda un minuto o menos. Confirma tu cita o elige otra franja; tus datos se conservarán.';
+    }
+  }
+  async function elegirHora(hora) {
+    if (!BACKEND) { st.time = hora; renderSlots(); ticket(); return; }
+    const seleccion = { sede: st.sede, fecha: ymd(st.date), hora };
+    setSending(true); $('#bGo').textContent = 'Apartando horario…'; err('');
+    try {
+      const r = await enviarReserva({ accion: 'apartar', sesion, ...seleccion });
+      if (!r.ok || !/^[a-f0-9]{32}$/.test(r.token || '') || !Number.isFinite(r.vence)) {
+        err(r.error === 'incierta' ? 'No recibimos el apartado. Vuelve a seleccionar la hora para comprobarlo; en este paso todavía no se registra una cita.' : MENSAJES[r.error] || 'No pudimos apartar esa hora. Vuelve a seleccionarla.'); return;
+      }
+      apartado = { ...seleccion, token: r.token, vence: r.vence, ampliaciones: r.ampliaciones, puedeAmpliar: r.puedeAmpliar !== false };
+      extensionPendiente = null;
+      if (Number.isFinite(r.ahora)) remote.clock = { epoch: r.ahora, tick: performance.now() };
+      avisoTiempo = false; st.time = hora;
+      $('#holdBox').hidden = false; $('#holdExtend').hidden = r.puedeAmpliar === false;
+      $('#holdMessage').textContent = r.puedeAmpliar === false ? 'Horario apartado hasta el tiempo indicado. Esta franja está cerca del cierre de reservas por anticipación mínima y no admite más tiempo. Tus datos se conservarán si necesitas elegir otra hora.' : 'Horario apartado para ti durante cinco minutos. Revisa día, hora y sede antes de confirmar. Puedes ampliar el tiempo hasta diez veces, sin superar el cierre de reservas de esta franja.';
+    } finally { setSending(false); renderSlots(); ticket(); pintarApartado(); }
+  }
+  $('#holdExtend').addEventListener('click', async () => {
+    if (!apartado || enviando) return;
+    setSending(true);
+    $('#bGo').textContent = 'Ampliando apartado…';
+    try {
+      extensionPendiente ||= operationId();
+      const r = await enviarReserva({ accion: 'extender', sesion, token: apartado.token, operacion: extensionPendiente });
+      if (!r.ok) { err(r.error === 'incierta' ? 'No recibimos la ampliación. Vuelve a pulsar «Necesito más tiempo» para comprobarla.' : MENSAJES[r.error] || MENSAJES.red); return; }
+      apartado.vence = r.vence; apartado.ampliaciones = r.ampliaciones;
+      apartado.puedeAmpliar = r.ampliaciones < 10 && r.puedeAmpliar !== false;
+      extensionPendiente = null;
+      if (Number.isFinite(r.ahora)) remote.clock = { epoch: r.ahora, tick: performance.now() };
+      avisoTiempo = false;
+      $('#holdMessage').textContent = `Tiempo actualizado. Ampliaciones usadas: ${r.ampliaciones} de 10.${r.puedeAmpliar === false ? ' No hay más ampliaciones para esta franja. Tus datos se conservarán si necesitas elegir otra hora.' : ''}`;
+      $('#holdExtend').hidden = r.ampliaciones >= 10 || r.puedeAmpliar === false;
+    } finally { setSending(false); pintarApartado(); }
+  });
+  setInterval(pintarApartado, 1000);
   formEl.addEventListener('submit', e => {
     e.preventDefault();
     confirmar().catch(() => { setSending(false); err(MENSAJES.incierta); });
@@ -322,8 +391,11 @@
     const s = R.SEDES[selection.sede], d = selection.date;
     const payload = { sede: selection.sede, nombre, celular: tel, correo: mail, tipo: selection.tipo, fecha: ymd(d), hora: selection.time, hp: $('#bHp').value };
     const signature = JSON.stringify(payload);
+    if (BACKEND && (!apartado || apartado.vence <= serverEpoch()) && !(pendiente && pendiente.signature === signature && pendiente.incierta)) return err(MENSAJES.apartado_vencido);
     if (!pendiente || pendiente.signature !== signature) pendiente = { signature, operacion: operationId() };
     payload.operacion = pendiente.operacion;
+    payload.sesion = sesion; payload.token = apartado ? apartado.token : pendiente.token;
+    pendiente.token = payload.token;
     setSending(true); err('');
     let res;
     try {
@@ -332,19 +404,22 @@
       res = await enviarReserva(payload);
       if (!res || !res.ok) {
         const code = res && res.error;
-        if (['hora_ocupada', 'dia_lleno', 'fuera_de_rango', 'horario'].includes(code)) { st.time = null; ticket(); refrescarRemoto(); }
+        pendiente.incierta = code === 'incierta';
+        if (['hora_ocupada', 'dia_lleno', 'fuera_de_rango', 'horario', 'apartado_vencido'].includes(code)) { soltarApartado(); st.time = null; ticket(); refrescarRemoto(); }
         err(MENSAJES[code] || MENSAJES.servidor);
         return;
       }
       if (!res.local && (typeof res.id !== 'string' || !res.id)) { err(MENSAJES.incierta); return; }
+      apartado = null; $('#holdBox').hidden = true;
       if (BACKEND) (remote.taken[selection.sede] = remote.taken[selection.sede] || new Set()).add(`${payload.fecha}|${selection.time}`);
       const fecha = `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()].toLowerCase()} de ${d.getFullYear()}`;
       const hora = hhmm12(selection.time);
       $('#doneTxt').textContent = `${nombre}, te esperamos el ${fecha} a las ${hora} en la sede ${s.name} (${s.addr}). Tipo de cita: ${selection.tipo}.`;
       $('#doneRef').textContent = res.id ? `Referencia: ${res.id}` : 'Confirma la cita por WhatsApp.';
-      $('#doneNotice').textContent = res.local ? 'Confirma tu solicitud por WhatsApp para que la sede la registre.' : res.correo === 'fallido' ? 'Tu cita quedó guardada, pero no pudimos enviar el correo. Guarda tu tarjeta o contáctanos por WhatsApp.' : 'Tu cita quedó guardada. Guarda tu tarjeta como comprobante. Si indicaste correo, revisa también spam; puedes confirmar su recepción con la sede.';
+      $('#doneNotice').textContent = res.local ? 'Confirma tu solicitud por WhatsApp para que la sede la registre.' : 'Estado: pendiente de confirmación por la sede. ' + (res.correo === 'fallido' ? 'Tu cita quedó guardada, pero no pudimos enviar el correo. Conserva la referencia o contáctanos por WhatsApp.' : 'Guarda tu tarjeta como comprobante. Si indicaste correo, revisa también spam. Para cambiar o cancelar, contacta a la sede por WhatsApp.');
       const msg = `Hola, quiero confirmar mi cita.\nNombre: ${nombre}\nTipo: ${selection.tipo}\nSede: ${s.name}\nFecha: ${fecha}\nHora: ${hora}\nReferencia: ${res.id || 'Solicitud por WhatsApp'}`;
-      lastCard = { nombre, tipo: selection.tipo, sede: s.name, addr: s.addr, dia: d.getDate(), mes: `${MESES[d.getMonth()]} ${d.getFullYear()}`, sem: DIAS[d.getDay()], hora, id: res.id || '' };
+      lastCard = { nombre, tipo: selection.tipo, sede: s.name, addr: s.addr, dia: d.getDate(), mes: `${MESES[d.getMonth()]} ${d.getFullYear()}`, sem: DIAS[d.getDay()], hora, id: res.id || '', fecha: payload.fecha, hora24: selection.time, duracion: remote.cfg?.duracion || 30 };
+      $('#doneCalendar').hidden = !!res.local;
       $('#doneWa').href = R.waUrl(selection.sede, msg);
       clearForm(); pendiente = null;
       $('#bookForm').hidden = true; $('#bDone').hidden = false;
@@ -415,6 +490,15 @@
     } catch { status.textContent = 'No pudimos generar la imagen. Conserva la referencia de tu cita o toma una captura.'; }
     finally { button.disabled = false; }
   });
+  $('#doneCalendar').addEventListener('click', () => {
+    if (!lastCard) return;
+    try {
+      const content = window.RIVAS_ICS({ id: lastCard.id, fecha: lastCard.fecha, hora: lastCard.hora24, duracion: lastCard.duracion, sede: lastCard.sede, direccion: lastCard.addr });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], { type: 'text/calendar;charset=utf-8' }));
+      a.download = 'cita-dr-rivas.ics'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    } catch { $('#doneCardStatus').textContent = 'No pudimos generar el calendario. Conserva la referencia y la tarjeta de tu cita.'; }
+  });
 
   function clearForm() {
     $('#bookForm').reset();
@@ -422,11 +506,12 @@
     err('');
   }
   clearForm();
-  addEventListener('pageshow', e => { if (e.persisted) clearForm(); });
+  addEventListener('pageshow', e => { if (e.persisted) { pintarApartado(); refrescarRemoto(); } });
 
   /* Limpiar: deja el agendador como nuevo (tipo, día, hora y datos); la sede elegida se conserva */
   function resetBooking() {
     if (enviando) return;
+    soltarApartado();
     pendiente = null;
     st.date = null; st.time = null; st.tipo = 'Valoración inicial';
     st.month = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -443,7 +528,7 @@
   const dayKey = () => ymd(clinicNow());
   let seen = dayKey();
   const checkDay = () => {
-    if (enviando || dayKey() === seen) return;
+    if (enviando || pendiente?.incierta || dayKey() === seen) return;
     seen = dayKey(); refreshWindow();
     if (st.date && !dayOk(st.date)) { st.date = null; st.time = null; }
     st.month = new Date(today.getFullYear(), today.getMonth(), 1);

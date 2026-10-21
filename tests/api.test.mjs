@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import handler from '../api/agenda.mjs';
-const payload = { sede: 'yopal', nombre: 'Paciente QA', celular: '3000000000', correo: '', tipo: 'Valoración inicial', fecha: '20261022', hora: '08:00', hp: '', operacion: 'a'.repeat(32) };
+const payload = { sede: 'yopal', nombre: 'Paciente QA', celular: '3000000000', correo: '', tipo: 'Valoración inicial', fecha: '20261022', hora: '08:00', hp: '', sesion: 'b'.repeat(32), token: 'c'.repeat(32), operacion: 'a'.repeat(32) };
 async function run(req = {}, upstream = { ok: true, id: 'C-QA' }, status = 200) {
   let call; const original = global.fetch;
   global.fetch = async (url, options) => { call = { url, options }; if (upstream instanceof Error) throw upstream; return { ok: status < 400, json: async () => upstream }; };
@@ -14,4 +14,17 @@ test('Validación, límite de cuerpo y honeypot no llegan al servidor', async ()
 test('Upstream 500 con ok:true nunca se confirma', async () => { const { res } = await run({}, { ok: true, id: 'fake' }, 500); assert.equal(res.body.error, 'incierta'); });
 test('Timeout y éxito sin ID se consideran inciertos', async () => { for (const upstream of [new Error('timeout'), { ok: true }]) { const { res } = await run({}, upstream); assert.equal(res.body.error, 'incierta'); } });
 test('Conflicto explícito permanece conflicto y no expone detalle interno', async () => { const { res } = await run({}, { ok: false, error: 'hora_ocupada', detalle: 'private' }); assert.deepEqual(res.body, { ok: false, error: 'hora_ocupada' }); });
-test('Configuración pública recibe reloj de servidor y disponibilidad exige esquema', async () => { const c = await run({ method: 'GET', query: { accion: 'config' } }, { ok: true, apiVersion: 2, dias: 30, horasMin: 2, sedes: {} }); assert.equal(c.res.body.zona, 'America/Bogota'); assert(Number.isFinite(c.res.body.ahora)); const h = await run({ method: 'GET', query: { accion: 'horas', sede: 'yopal' } }, { ok: true }); assert.equal(h.res.body.ok, false); });
+test('Configuración pública recibe reloj de servidor y disponibilidad exige esquema', async () => { const c = await run({ method: 'GET', query: { accion: 'config' } }, { ok: true, apiVersion: 3, apartados: { segundos: 300 }, dias: 30, horasMin: 2, sedes: {} }); assert.equal(c.res.body.zona, 'America/Bogota'); assert(Number.isFinite(c.res.body.ahora)); const h = await run({ method: 'GET', query: { accion: 'horas', sede: 'yopal' } }, { ok: true }); assert.equal(h.res.body.ok, false); });
+
+test('Apartar no exige datos personales y solo reenvía campos permitidos', async () => {
+  const body = { accion: 'apartar', sesion: payload.sesion, sede: payload.sede, fecha: payload.fecha, hora: payload.hora, nombre: 'NO REENVIAR' };
+  const { res, call } = await run({ body }, { ok: true, token: payload.token, vence: Date.now() + 300000, ampliaciones: 0, ahora: Date.now() });
+  assert.equal(res.body.ok, true); assert(!call.options.body.includes('NO REENVIAR')); assert(!call.url.includes(payload.sesion));
+});
+
+test('Ampliar exige operación idempotente y liberar admite respuesta sin ID clínico', async () => {
+  const body = { accion: 'extender', sesion: payload.sesion, token: payload.token };
+  const invalid = await run({ body }); assert.equal(invalid.call, undefined);
+  const valid = await run({ body: { ...body, operacion: payload.operacion } }, { ok: true, token: payload.token, vence: Date.now() + 300000, ampliaciones: 1 }); assert.equal(valid.res.body.ok, true);
+  const release = await run({ body: { ...body, accion: 'liberar' } }, { ok: true, liberado: true }); assert.equal(release.res.body.liberado, true);
+});

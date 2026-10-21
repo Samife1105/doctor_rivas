@@ -56,8 +56,26 @@
 
   // Gate
   const gate = $('#gate');
-  const openGate = () => { gate.classList.remove('off'); document.body.classList.add('lock'); };
-  const closeGate = () => { gate.classList.add('off'); document.body.classList.remove('lock'); };
+  const background = [...document.body.children].filter(el => el !== gate && !['SCRIPT', 'STYLE'].includes(el.tagName));
+  const previousAria = new Map(background.map(el => [el, el.getAttribute('aria-hidden')]));
+  let gateReturn = null;
+  const openGate = () => {
+    gateReturn = document.activeElement;
+    gate.inert = false; gate.removeAttribute('aria-hidden'); gate.classList.remove('off'); document.body.classList.add('lock');
+    background.forEach(el => { el.inert = true; el.setAttribute('aria-hidden', 'true'); });
+    $('.city', gate).focus({ preventScroll: true });
+  };
+  const closeGate = () => {
+    background.forEach(el => { el.inert = false; const value = previousAria.get(el); if (value === null) el.removeAttribute('aria-hidden'); else el.setAttribute('aria-hidden', value); });
+    (gateReturn && gateReturn !== document.body && !gate.contains(gateReturn) ? gateReturn : $('#sedeChip')).focus({ preventScroll: true });
+    gate.inert = true; gate.setAttribute('aria-hidden', 'true'); gate.classList.add('off'); document.body.classList.remove('lock');
+  };
+  gate.addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const buttons = $$('.city', gate), first = buttons[0], last = buttons[buttons.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
   // La transición nace en el botón que se pulsó (efecto "iris")
   const origin = el => {
     const r = el.getBoundingClientRect();
