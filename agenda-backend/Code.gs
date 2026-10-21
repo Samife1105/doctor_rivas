@@ -1,5 +1,5 @@
 /**
- * AGENDA DR. RIVAS — Google Apps Script (v4, sin calendario)
+ * AGENDA DR. RIVAS — Google Apps Script (v5, reservas idempotentes)
  * Se pega en la hoja de cálculo (Extensiones > Apps Script) y se publica como aplicación web.
  *
  * Qué hace:
@@ -31,14 +31,7 @@ function doGet(e) {
     const accion = (e && e.parameter && e.parameter.accion) || '';
     const cfg = leerConfig_();
     if (accion === 'config') return json_(configPublica_(cfg));
-    if (accion === 'reservar') {   // la reserva llega por GET: el POST cruzado falla en Safari (iPhone)
-      const lock = LockService.getScriptLock();
-      let salida;
-      try { lock.waitLock(25000); salida = registrar_(JSON.parse(e.parameter.d || '{}')); }
-      catch (err) { salida = { ok: false, error: 'servidor', detalle: String(err) }; }
-      finally { try { lock.releaseLock(); } catch (_) {} }
-      return json_(salida);
-    }
+    if (accion === 'reservar') return json_({ ok: false, error: 'metodo' });
     if (accion === 'horas') {
       const sede = e.parameter.sede;
       if (!cfg.sedes[sede]) return json_({ ok: false, error: 'sede' });
@@ -46,7 +39,7 @@ function doGet(e) {
     }
     return json_({ ok: true, servicio: 'Agenda Dr. Rivas' });
   } catch (err) {
-    return json_({ ok: false, error: 'servidor', detalle: String(err) });
+    return json_({ ok: false, error: 'servidor', detalle: 'No fue posible completar la operación.' });
   }
 }
 
@@ -55,9 +48,11 @@ function doPost(e) {
   let salida;
   try {
     lock.waitLock(25000);
-    salida = registrar_(JSON.parse(e.postData.contents));
+    const contents = e && e.postData && e.postData.contents;
+    if (!contents || contents.length > 4096) return json_({ ok: false, error: 'invalido' });
+    salida = registrar_(JSON.parse(contents));
   } catch (err) {
-    salida = { ok: false, error: 'servidor', detalle: String(err) };
+    salida = { ok: false, error: 'servidor', detalle: 'No fue posible completar la operación.' };
   } finally {
     try { lock.releaseLock(); } catch (_) {}
   }
@@ -75,7 +70,7 @@ function leerConfig_() {
   const p = sh.getRange('B4:B9').getDisplayValues().map(r => r[0]);
   const cfg = {
     dias: Number(p[0]) || 30,
-    horasMin: Number(p[1]) || 2,
+    horasMin: p[1] === '' ? 2 : Number(p[1]),
     maxDia: Number(p[2]) || 20,
     duracion: Number(p[3]) || 30,
     remitente: p[4] || 'Clínica Dr. Rivas',
@@ -93,6 +88,7 @@ function leerConfig_() {
     const desde = hhmm_(r[2]), hasta = hhmm_(r[3]);
     s.horarios[dia[r[1]]] = desde && hasta ? franjas_(desde, hasta, cfg.duracion) : [];
   });
+  if (!Number.isInteger(cfg.dias) || cfg.dias < 1 || cfg.dias > 365 || !Number.isFinite(cfg.horasMin) || cfg.horasMin < 0 || !Number.isInteger(cfg.maxDia) || cfg.maxDia < 1 || !Number.isInteger(cfg.duracion) || cfg.duracion < 5 || cfg.duracion > 240) throw new Error('Configuración de agenda inválida');
   return cfg;
 }
 
@@ -106,12 +102,13 @@ function esc_(s) { return String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<
 
 function hhmm_(txt) {
   const m = String(txt || '').trim().match(/^(\d{1,2}):(\d{2})/);
-  return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : '';
+  return m && Number(m[1]) < 24 && Number(m[2]) < 60 ? ('0' + m[1]).slice(-2) + ':' + m[2] : '';
 }
 
 function franjas_(desde, hasta, dur) {
   const aMin = t => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
   const out = [];
+  if (!Number.isInteger(dur) || dur < 5 || dur > 240) throw new Error('Duración inválida');
   for (let m = aMin(desde); m + dur <= aMin(hasta); m += dur) {
     out.push(('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2));
   }
@@ -124,7 +121,7 @@ function configPublica_(cfg) {
     const s = cfg.sedes[k];
     sedes[k] = { nombre: s.nombre, direccion: s.direccion, whatsapp: s.whatsapp, horarios: s.horarios };
   });
-  return { ok: true, dias: cfg.dias, horasMin: cfg.horasMin, maxDia: cfg.maxDia, duracion: cfg.duracion, sedes: sedes };
+  return { ok: true, apiVersion: 2, ahora: Date.now(), zona: TZ, dias: cfg.dias, horasMin: cfg.horasMin, maxDia: cfg.maxDia, duracion: cfg.duracion, sedes: sedes };
 }
 
 /* ============================== Lectura de citas ============================== */
@@ -153,8 +150,8 @@ function citasDe_(sedeClave) {
       hora: hhmm_(disp[i][C.HORA - 1]),
       estado: r[C.ESTADO - 1] || 'Pendiente',
       celular: disp[i][C.CEL - 1],
-      correo: String(r[C.MAIL - 1] || '').trim(),
-      nombre: r[C.NOMBRE - 1],
+      correo: textoOriginal_(r[C.MAIL - 1]).trim(),
+      nombre: textoOriginal_(r[C.NOMBRE - 1]),
       tipo: r[C.TIPO - 1]
     });
   });
@@ -240,39 +237,65 @@ function datosFecha_(fecha) {   // 'yyyyMMdd' -> {y, m, d}
 
 /* ============================== Registrar una cita ============================== */
 
+function textoSeguro_(valor) { return /^[=+\-@\t\r]/.test(String(valor)) ? "'" + valor : String(valor); }
+function textoOriginal_(valor) { return String(valor || '').replace(/^'(?=[=+\-@\t\r])/, ''); }
+
 function registrar_(d) {
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return { ok: false, error: 'invalido' };
   if (d.hp) return { ok: false, error: 'invalido' };           // campo trampa anti-spam
   const cfg = leerConfig_();
   const sede = cfg.sedes[d.sede];
   const nombre = String(d.nombre || '').trim();
-  const celular = String(d.celular || '').replace(/\D/g, '');
+  const celular = String(d.celular || '').replace(/\D/g, '').replace(/^57(?=3\d{9}$)/, '');
   const correo = String(d.correo || '').trim().toLowerCase();
   const tipo = String(d.tipo || '');
   const fecha = String(d.fecha || '');
   const hora = String(d.hora || '');
+  const operacion = String(d.operacion || '');
+  if (!/^[a-f0-9]{32}$/.test(operacion)) return { ok: false, error: 'operacion' };
 
   if (!sede || !HOJAS[d.sede]) return { ok: false, error: 'sede' };
   if (nombre.length < 3 || nombre.length > 80) return { ok: false, error: 'nombre' };
   if (!/^3\d{9}$/.test(celular)) return { ok: false, error: 'celular' };
+  if (correo.length > 254 || /\.\./.test(correo)) return { ok: false, error: 'correo' };
   if (correo && !/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(correo)) return { ok: false, error: 'correo' };
   if (TIPOS.indexOf(tipo) < 0) return { ok: false, error: 'tipo' };
   if (!/^\d{8}$/.test(fecha) || !/^\d{2}:\d{2}$/.test(hora)) return { ok: false, error: 'fecha' };
 
+  // La operación identifica una fila durable. Recuperar antes de revisar vencimientos.
+  const id = 'C-' + operacion;
+  const todas = {};
+  Object.keys(HOJAS).forEach(k => { todas[k] = citasDe_(k); });
+  const previa = Object.keys(todas).flatMap(k => todas[k]).find(c => c.id === id);
+  if (previa) {
+    if (previa.sede !== d.sede || previa.celular !== celular || previa.fecha !== fecha || previa.hora !== hora || previa.tipo !== tipo || previa.correo !== correo || textoOriginal_(previa.nombre) !== nombre) return { ok: false, error: 'operacion_conflicto' };
+    if (previa.estado === 'Cancelada') return { ok: false, error: 'operacion_conflicto' };
+    return { ok: true, id: id, recuperada: true, correo: 'no_comprobado' };
+  }
   const y = Number(fecha.slice(0, 4)), m = Number(fecha.slice(4, 6)), dd = Number(fecha.slice(6, 8));
-  const inicio = new Date(y, m - 1, dd, Number(hora.slice(0, 2)), Number(hora.slice(3, 5)));
+  let inicio;
+  try { inicio = Utilities.parseDate(fecha + ' ' + hora, TZ, 'yyyyMMdd HH:mm'); }
+  catch (_) { return { ok: false, error: 'fecha' }; }
+  if (Utilities.formatDate(inicio, TZ, 'yyyyMMdd HH:mm') !== fecha + ' ' + hora) return { ok: false, error: 'fecha' };
   const ahora = new Date();
-  const limite = new Date(ahora.getTime() + cfg.dias * 86400000 + 86400000);
-  if (isNaN(inicio.getTime()) || inicio.getTime() < ahora.getTime() + cfg.horasMin * 3600000 || inicio > limite) return { ok: false, error: 'fuera_de_rango' };
-
-  const franjasDia = sede.horarios[inicio.getDay()] || [];
-  if (franjasDia.indexOf(hora) < 0) return { ok: false, error: 'horario' };
-
   const hoy = fechaTxt_(ahora, TZ);
-  const deLaSede = citasDe_(d.sede).filter(c => c.estado !== 'Cancelada');
+  // Ventana inclusiva hasta el final del día hoy + dias, igual que el calendario.
+  const ultimo = Utilities.parseDate(hoy + ' 12:00', TZ, 'yyyyMMdd HH:mm');
+  ultimo.setUTCDate(ultimo.getUTCDate() + cfg.dias);
+  if (fecha > fechaTxt_(ultimo, TZ) || inicio.getTime() <= ahora.getTime() + cfg.horasMin * 3600000) return { ok: false, error: 'fuera_de_rango' };
+  const dia = new Date(Date.UTC(y, m - 1, dd)).getUTCDay();
+  const franjasDia = sede.horarios[dia] || [];
+  if (franjasDia.indexOf(hora) < 0) return { ok: false, error: 'horario' };
+  // Se ejecuta bajo ScriptLock. No sustituye controles de abuso en el alojamiento.
+  const cache = CacheService.getScriptCache(), rateKey = 'intentos_' + celular;
+  const intentos = Number(cache.get(rateKey) || 0);
+  if (intentos >= 6) return { ok: false, error: 'limite' };
+  cache.put(rateKey, String(intentos + 1), 300);
+  const deLaSede = todas[d.sede].filter(c => c.estado !== 'Cancelada');
   if (deLaSede.some(c => c.fecha === fecha && c.hora === hora)) return { ok: false, error: 'hora_ocupada' };
   if (deLaSede.filter(c => c.fecha === fecha).length >= cfg.maxDia) return { ok: false, error: 'dia_lleno' };
   let activas = 0;
-  Object.keys(HOJAS).forEach(k => { activas += citasDe_(k).filter(c => c.estado !== 'Cancelada' && c.celular === celular && c.fecha >= hoy).length; });
+  Object.keys(HOJAS).forEach(k => { activas += todas[k].filter(c => c.estado !== 'Cancelada' && c.celular === celular && c.fecha >= hoy).length; });
   if (activas >= MAX_ACTIVAS_POR_CELULAR) return { ok: false, error: 'demasiadas_citas' };
 
   // --- Fila en la pestaña de la sede
@@ -280,16 +303,19 @@ function registrar_(d) {
   const sh = ss.getSheetByName(HOJAS[d.sede]);
   if (!sh) return { ok: false, error: 'sede' };
   const fila = sh.getLastRow() + 1;
-  const id = 'C' + Utilities.formatDate(ahora, TZ, 'yyMMddHHmm') + Math.floor(100 + Math.random() * 900);
+  if (fila > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 100);
   sh.getRange(fila, C.HORA).setNumberFormat('@');
   sh.getRange(fila, C.CEL).setNumberFormat('@');
+  sh.getRange(fila, C.NOMBRE).setNumberFormat('@');
+  sh.getRange(fila, C.MAIL).setNumberFormat('@');
   // La fecha se guarda a mediodía para que el día no cambie aunque la hoja use otra zona horaria
-  sh.getRange(fila, 1, 1, 10).setValues([[id, ahora, sede.nombre, new Date(y, m - 1, dd, 12, 0), hora, tipo, nombre, celular, correo, 'Pendiente']]);
+  sh.getRange(fila, 1, 1, 10).setValues([[id, ahora, sede.nombre, Utilities.parseDate(fecha + ' 12:00', TZ, 'yyyyMMdd HH:mm'), hora, tipo, textoSeguro_(nombre), celular, textoSeguro_(correo), 'Pendiente']]);
 
   const f = { y: y, m: m, d: dd };
   const cuando = fechaLarga_(y, m, dd) + ' a las ' + hora12_(hora);
   const wa = 'https://wa.me/' + sede.whatsapp;
 
+  let estadoCorreo = correo ? 'fallido' : 'no_solicitado';
   // --- Correo al paciente: tarjeta "tu cita quedó guardada"
   if (correo) {
     try {
@@ -306,7 +332,8 @@ function registrar_(d) {
           pie: 'Si necesitas cambiar o cancelar tu cita, escríbenos por WhatsApp. ¡Te esperamos!'
         })
       });
-    } catch (err) { /* si el correo falla, la cita igual queda guardada */ }
+      estadoCorreo = 'enviado';
+    } catch (err) { console.warn('Fallo correo paciente, cita ' + id); }
   }
 
   // --- Aviso a la sede (opcional: solo si hay correo configurado): tarjeta "nueva cita"
@@ -326,9 +353,9 @@ function registrar_(d) {
           pie: 'Cuando la confirmes, cambia el estado en la hoja. Si pones “Cancelada”, la hora queda libre.'
         })
       });
-    } catch (err) { /* ignorar */ }
+    } catch (err) { console.warn('Fallo aviso sede, cita ' + id); }
   }
-  return { ok: true, id: id };
+  return { ok: true, id: id, correo: estadoCorreo };
 }
 
 /* ============================== Recordatorio diario ============================== */
@@ -369,7 +396,7 @@ function enviarRecordatorios() {
 
 function armarHojaCitas_(sh) {
   const n = ENCABEZADOS.length;
-  if (sh.getMaxColumns() > 12) sh.deleteColumns(13, sh.getMaxColumns() - 12);
+  // Conservar columnas adicionales que pueda usar la recepción.
   sh.getRange(1, 1, 1, n).setValues([ENCABEZADOS]).setBackground('#0A0A0A').setFontColor('#FFFFFF').setFontWeight('bold').setVerticalAlignment('middle').setWrap(true);
   sh.setRowHeight(1, 32);
   sh.setFrozenRows(1);
@@ -402,7 +429,7 @@ function prepararHoja() {
 
   // Hoja "Citas" antigua (una sola para todas las sedes): se elimina si quedó de la versión anterior
   const vieja = ss.getSheetByName('Citas');
-  if (vieja) ss.deleteSheet(vieja);
+  // Se conserva la pestaña antigua para no eliminar citas históricas.
 
   // Configuración sin calendario: se quita el parámetro de invitaciones y la columna del calendario
   const cf = ss.getSheetByName(HOJA_CONFIG);
