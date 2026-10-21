@@ -10,13 +10,13 @@ const cfg = { ok: true, apiVersion: 3, apartados: { segundos: 300 }, dias: 30, h
 const settle = async () => { for (let i = 0; i < 8; i++) await new Promise(r => setImmediate(r)); };
 async function setup(reserve = async () => ({ ok: true, id: 'C-QA' }), failHours = false, holdResponse = null) {
   const dom = new JSDOM(html, { url: 'https://qa.example/', runScripts: 'outside-only', pretendToBeVisual: true });
-  const w = dom.window, calls = [], holdCalls = [], d = w.document; let tick = 0, holdTick; w.performance.now = () => tick; const interval = w.setInterval.bind(w); w.setInterval = (fn, ms) => { if (ms === 1000) holdTick = fn; return interval(fn, ms); };
+  const w = dom.window, calls = [], holdCalls = [], d = w.document; let tick = 0, holdTick; w.performance.now = () => tick; const interval = w.setInterval.bind(w); w.setInterval = (fn, ms) => { if (ms === 15000) holdTick = fn; return interval(fn, ms); };
   w.matchMedia = () => ({ matches: true });
   w.HTMLElement.prototype.scrollIntoView = () => {};
   w.RIVAS_CONFIG = { backendUrl: 'configured' };
   w.RIVAS = { current: () => 'yopal', SEDES: Object.fromEntries(['yopal', 'aguazul', 'bogota'].map(s => [s, { name: s, addr: 'Dirección QA' }])), waUrl: () => 'https://wa.me/0' };
   w.fetch = async (url, options = {}) => {
-    if (options.method === 'POST') { const p = JSON.parse(options.body); if (p.accion && p.accion !== 'reservar') { holdCalls.push(p); if (holdResponse) return { ok: true, status: 200, json: async () => holdResponse(p) }; return { ok: true, status: 200, json: async () => ({ ok: true, token: 'c'.repeat(32), vence: cfg.ahora + 300000, ahora: cfg.ahora, ampliaciones: p.accion === 'extender' ? 1 : 0, liberado: true }) }; } }
+    if (options.method === 'POST') { const p = JSON.parse(options.body); if (p.accion && p.accion !== 'reservar') { holdCalls.push(p); if (holdResponse) return { ok: true, status: 200, json: async () => holdResponse(p) }; return { ok: true, status: 200, json: async () => ({ ok: true, token: 'c'.repeat(32), vence: cfg.ahora + tick + 300000, ahora: cfg.ahora + tick, puedeAmpliar: true, ampliaciones: p.accion === 'extender' ? 1 : 0, liberado: true }) }; } }
     calls.push({ url, options });
     if (options.method === 'POST') return { ok: true, status: 200, json: async () => reserve(JSON.parse(options.body)) };
     if (url.includes('accion=config')) return { ok: true, json: async () => cfg };
@@ -71,7 +71,7 @@ test('Seleccionar horario obtiene apartado antes de permitir el envío', async t
   f.choose(); f.fill(); f.submit(); await settle();
   assert.equal(f.d.querySelector('#bGo').disabled, true); assert.equal(f.calls.filter(c => c.options.method === 'POST').length, 0);
   resolve({ ok: true, token: 'c'.repeat(32), vence: cfg.ahora + 300000, ahora: cfg.ahora, ampliaciones: 0 }); await settle();
-  assert.equal(f.d.querySelector('#holdBox').hidden, false); assert.match(f.d.querySelector('#holdClock').textContent, /05:00/);
+  assert(f.d.querySelector('.slot.on')); assert.equal(f.d.querySelector('#holdBox'), null); assert.equal(f.d.querySelector('#holdExtend'), null);
 });
 
 test('Conflicto al apartar conserva datos y no marca la hora seleccionada', async t => {
@@ -81,18 +81,58 @@ test('Conflicto al apartar conserva datos y no marca la hora seleccionada', asyn
   assert.equal(f.d.querySelector('#bNombre').value, 'Paciente QA');
 });
 
-test('Vencimiento anuncia aviso previo, conserva formulario y exige nueva selección', async t => {
+test('Vencimiento en segundo plano conserva datos y recupera el cupo al confirmar', async t => {
   const f = await setup(); t.after(() => f.dom.window.close()); f.choose(); await settle(); f.fill();
-  f.advance(241000); assert.match(f.d.querySelector('#holdMessage').textContent, /Queda un minuto/);
-  f.advance(60000); await settle(); assert.match(f.d.querySelector('#holdMessage').textContent, /venció/);
+  Object.defineProperty(f.d, 'hidden', { value: true, configurable: true });
+  f.advance(301000); await settle();
   assert.equal(f.d.querySelector('#bNombre').value, 'Paciente QA'); assert.equal(f.d.querySelector('#bOk').checked, true);
-  f.submit(); await settle(); assert.equal(f.calls.filter(c => c.options.method === 'POST').length, 0);
+  assert(f.d.querySelector('.slot.on')); assert.equal(f.d.querySelector('#bErr').hidden, true);
+  f.submit(); await settle(); assert.equal(f.holdCalls.filter(c => c.accion === 'apartar').length, 2);
+  assert.equal(f.calls.filter(c => c.options.method === 'POST').length, 1); assert.equal(f.d.querySelector('#bDone').hidden, false);
 });
 
-test('Ampliar usa POST autenticado; cambiar día libera sin borrar datos', async t => {
+test('Renovación automática durante actividad; cambiar día libera sin borrar datos', async t => {
   const f = await setup(); t.after(() => f.dom.window.close()); f.choose(); await settle(); f.fill();
-  f.d.querySelector('#holdExtend').click(); await settle();
+  f.advance(150000); f.d.querySelector('#bNombre').dispatchEvent(new f.w.Event('input', { bubbles: true }));
+  f.advance(91000); await settle();
   const extension = f.holdCalls.find(c => c.accion === 'extender'); assert.match(extension.sesion, /^[a-f0-9]{32}$/); assert.match(extension.operacion, /^[a-f0-9]{32}$/);
+  assert.equal(f.d.querySelector('#bGo').disabled, false); assert.equal(f.d.querySelector('#holdExtend'), null);
   [...f.d.querySelectorAll('#calGrid button')].find(b => !b.disabled && b.getAttribute('aria-pressed') !== 'true').click(); await settle();
   assert(f.holdCalls.some(c => c.accion === 'liberar')); assert.equal(f.d.querySelector('#bNombre').value, 'Paciente QA');
+});
+
+test('Sin actividad no se renueva ni se borra el formulario', async t => {
+  const f = await setup(); t.after(() => f.dom.window.close()); f.choose(); await settle(); f.fill();
+  f.advance(241000); await settle(); assert.equal(f.holdCalls.filter(c => c.accion === 'extender').length, 0);
+  assert.equal(f.d.querySelector('#bNombre').value, 'Paciente QA'); assert(f.d.querySelector('.slot.on'));
+});
+
+test('Si otro tomó el cupo tras vencer, informar conflicto conservando los datos', async t => {
+  let apartados = 0;
+  const f = await setup(undefined, false, p => p.accion === 'apartar' && ++apartados > 1 ? { ok: false, error: 'hora_ocupada' } : { ok: true, token: 'c'.repeat(32), vence: cfg.ahora + 300000, ahora: cfg.ahora, ampliaciones: 0, puedeAmpliar: true });
+  t.after(() => f.dom.window.close()); f.choose(); await settle(); f.fill(); f.advance(301000); await settle(); f.submit(); await settle();
+  assert.equal(f.d.querySelector('#bDone').hidden, true); assert.equal(f.d.querySelector('#bNombre').value, 'Paciente QA');
+  assert.match(f.d.querySelector('#bErr').textContent, /tomada/); assert.equal(f.calls.filter(c => c.options.method === 'POST').length, 0);
+});
+
+test('Renovación perdida se reintenta con la misma operación, sin avisos ni bloqueos', async t => {
+  let renovaciones = 0;
+  const f = await setup(undefined, false, p => {
+    if (p.accion === 'extender' && ++renovaciones === 1) throw new TypeError('offline');
+    return { ok: true, token: 'c'.repeat(32), vence: cfg.ahora + (p.accion === 'extender' ? 600000 : 300000), ahora: cfg.ahora, ampliaciones: p.accion === 'extender' ? 1 : 0, puedeAmpliar: true };
+  });
+  t.after(() => f.dom.window.close()); f.choose(); await settle(); f.fill();
+  f.advance(150000); f.d.querySelector('#bNombre').dispatchEvent(new f.w.Event('input', { bubbles: true })); f.advance(91000); await settle();
+  assert.equal(f.d.querySelector('#bGo').disabled, false); assert.equal(f.d.querySelector('#bErr').hidden, true);
+  f.advance(15000); await settle(); const attempts = f.holdCalls.filter(c => c.accion === 'extender');
+  assert.equal(attempts.length, 2); assert.equal(attempts[0].operacion, attempts[1].operacion);
+});
+
+test('Confirmación espera la renovación en curso sin duplicar registro', async t => {
+  let resolve;
+  const f = await setup(undefined, false, p => p.accion === 'extender' ? new Promise(r => { resolve = r; }) : { ok: true, token: 'c'.repeat(32), vence: cfg.ahora + 300000, ahora: cfg.ahora, ampliaciones: 0, puedeAmpliar: true });
+  t.after(() => f.dom.window.close()); f.choose(); await settle(); f.fill(); f.advance(150000); f.d.querySelector('#bNombre').dispatchEvent(new f.w.Event('input', { bubbles: true })); f.advance(91000); await settle();
+  f.submit(); await settle(); assert.equal(f.calls.filter(c => c.options.method === 'POST').length, 0);
+  resolve({ ok: true, token: 'c'.repeat(32), vence: cfg.ahora + 600000, ahora: cfg.ahora + 241000, ampliaciones: 1, puedeAmpliar: true }); await settle();
+  assert.equal(f.calls.filter(c => c.options.method === 'POST').length, 1); assert.equal(f.d.querySelector('#bDone').hidden, false);
 });
