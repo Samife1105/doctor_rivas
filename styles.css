@@ -533,3 +533,15 @@ em{font-style:italic}
   .sede-chip{padding:6px 9px;gap:5px;font-size:.78rem;min-height:38px}
   .burger{width:40px;height:40px}.burger span{left:11px;right:11px}.burger span:first-child{top:16px}.burger span:last-child{top:22px}
 }
+
+/* Agenda: estado de red y objetivos táctiles legibles en pantallas estrechas. */
+.availability{font-size:.875rem;color:var(--mute);margin:12px 0;display:grid;gap:10px}
+.availability .btn{justify-self:start}
+.availability [hidden]{display:none}
+.day{min-height:44px;aspect-ratio:auto;border-radius:12px}
+.book__panel[aria-busy="true"]{cursor:progress}
+.book__panel :disabled{cursor:not-allowed}
+.slot[aria-pressed="true"]{background:var(--ink);color:var(--on-ink)}
+.done{min-width:0;overflow-wrap:anywhere}
+#doneRef{overflow-wrap:anywhere}
+@media(max-width:380px){.cal__grid,.cal__dow{gap:2px}.day{font-size:.85rem}}

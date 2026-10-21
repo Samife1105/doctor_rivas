@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": { "api/agenda.mjs": { "maxDuration": 60 } },
+  "headers": [
+    { "source": "/api/agenda", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
+  ]
+}
