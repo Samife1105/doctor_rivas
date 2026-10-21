@@ -546,3 +546,5 @@ em{font-style:italic}
 .done{min-width:0;overflow-wrap:anywhere}
 #doneRef{overflow-wrap:anywhere}
 @media(max-width:380px){.cal__grid,.cal__dow{gap:2px}.day{font-size:.85rem}}
+
+#gate:focus,#gate:focus-visible{outline:none}

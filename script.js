@@ -63,7 +63,7 @@
     gateReturn = document.activeElement;
     gate.inert = false; gate.removeAttribute('aria-hidden'); gate.classList.remove('off'); document.body.classList.add('lock');
     background.forEach(el => { el.inert = true; el.setAttribute('aria-hidden', 'true'); });
-    $('.city', gate).focus({ preventScroll: true });
+    gate.focus({ preventScroll: true });   // el foco entra a la pantalla, pero ninguna sede queda resaltada hasta que la persona elija
   };
   const closeGate = () => {
     background.forEach(el => { el.inert = false; const value = previousAria.get(el); if (value === null) el.removeAttribute('aria-hidden'); else el.setAttribute('aria-hidden', value); });
