@@ -18,12 +18,12 @@ http.createServer(async (req, res) => {
     req.body = data;
     if (!mock) return handler(req, res);
     if (req.method === 'POST') {
-      const p = JSON.parse(data); let result = bookings.get(p.operacion);
+      const p = JSON.parse(data); if (['apartar', 'extender', 'liberar'].includes(p.accion)) return res.status(200).json({ ok: true, token: 'c'.repeat(32), vence: Date.now() + 300000, ahora: Date.now(), ampliaciones: p.accion === 'extender' ? 1 : 0, liberado: true }); let result = bookings.get(p.operacion);
       if (!result) { result = { ok: true, id: 'C-' + p.operacion, correo: 'no_solicitado' }; bookings.set(p.operacion, result); }
       return res.status(200).json(result);
     }
     const horarios = Object.fromEntries(Array.from({ length: 7 }, (_, i) => [i, i === 0 ? [] : ['08:00', '08:30', '09:00', '09:30', '10:00', '14:00', '14:30', '15:00']]));
-    return res.status(200).json(req.query.accion === 'config' ? { ok: true, apiVersion: 2, ahora: Date.now(), dias: 30, horasMin: 2, sedes: Object.fromEntries(['yopal', 'aguazul', 'bogota'].map(s => [s, { horarios }])) } : { ok: true, ocupadas: [], llenos: [] });
+    return res.status(200).json(req.query.accion === 'config' ? { ok: true, apiVersion: 3, apartados: { segundos: 300 }, duracion: 30, ahora: Date.now(), dias: 30, horasMin: 2, sedes: Object.fromEntries(['yopal', 'aguazul', 'bogota'].map(s => [s, { horarios }])) } : { ok: true, ocupadas: [], llenos: [] });
   }
   try {
     const relative = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);

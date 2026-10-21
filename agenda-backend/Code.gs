@@ -1,5 +1,5 @@
 /**
- * AGENDA DR. RIVAS — Google Apps Script (v5, reservas idempotentes)
+ * AGENDA DR. RIVAS — Google Apps Script (v6, apartados temporales e idempotencia)
  * Se pega en la hoja de cálculo (Extensiones > Apps Script) y se publica como aplicación web.
  *
  * Qué hace:
@@ -50,7 +50,8 @@ function doPost(e) {
     lock.waitLock(25000);
     const contents = e && e.postData && e.postData.contents;
     if (!contents || contents.length > 4096) return json_({ ok: false, error: 'invalido' });
-    salida = registrar_(JSON.parse(contents));
+    const datos = JSON.parse(contents);
+    salida = datos && ['apartar', 'extender', 'liberar'].indexOf(datos.accion) >= 0 ? gestionarApartado_(datos) : registrar_(datos);
   } catch (err) {
     salida = { ok: false, error: 'servidor', detalle: 'No fue posible completar la operación.' };
   } finally {
@@ -121,7 +122,7 @@ function configPublica_(cfg) {
     const s = cfg.sedes[k];
     sedes[k] = { nombre: s.nombre, direccion: s.direccion, whatsapp: s.whatsapp, horarios: s.horarios };
   });
-  return { ok: true, apiVersion: 2, ahora: Date.now(), zona: TZ, dias: cfg.dias, horasMin: cfg.horasMin, maxDia: cfg.maxDia, duracion: cfg.duracion, sedes: sedes };
+  return { ok: true, apiVersion: 3, apartados: { segundos: 300, ampliaciones: 10 }, ahora: Date.now(), zona: TZ, dias: cfg.dias, horasMin: cfg.horasMin, maxDia: cfg.maxDia, duracion: cfg.duracion, sedes: sedes };
 }
 
 /* ============================== Lectura de citas ============================== */
@@ -167,8 +168,77 @@ function ocupadas_(cfg, sede) {
     ocupadas.push(c.fecha + '|' + c.hora);
     porDia[c.fecha] = (porDia[c.fecha] || 0) + 1;
   });
+  apartadosActivos_().filter(a => a.sede === sede).forEach(a => {
+    ocupadas.push(a.fecha + '|' + a.hora);
+    porDia[a.fecha] = (porDia[a.fecha] || 0) + 1;
+  });
   const llenos = Object.keys(porDia).filter(f => porDia[f] >= cfg.maxDia);
   return { ok: true, ocupadas: ocupadas, llenos: llenos };
+}
+
+/* Apartados durables, sin datos del paciente. Toda mutación pasa por ScriptLock.
+ * No usar CacheService para exclusión: Google puede desalojar su contenido antes del TTL.
+ * Secretos aleatorios de 32 caracteres hexadecimales; nunca se publican ni viajan en URL.
+ */
+const APARTADO_PREFIJO = 'apartado_v1_';
+function apartadosActivos_() {
+  const props = PropertiesService.getScriptProperties().getProperties();
+  return Object.keys(props).filter(k => k.indexOf(APARTADO_PREFIJO) === 0).map(k => {
+    try { return JSON.parse(props[k]); } catch (_) { return null; }
+  }).filter(a => a && a.vence > Date.now());
+}
+function validarFranja_(cfg, d) {
+  if (!cfg.sedes[d.sede] || !HOJAS[d.sede]) return 'sede';
+  if (typeof d.fecha !== 'string' || typeof d.hora !== 'string' || !/^\d{8}$/.test(d.fecha) || !/^\d{2}:\d{2}$/.test(d.hora)) return 'fecha';
+  let inicio;
+  try { inicio = Utilities.parseDate(d.fecha + ' ' + d.hora, TZ, 'yyyyMMdd HH:mm'); } catch (_) { return 'fecha'; }
+  if (Utilities.formatDate(inicio, TZ, 'yyyyMMdd HH:mm') !== d.fecha + ' ' + d.hora) return 'fecha';
+  const ultimo = Utilities.parseDate(fechaTxt_(new Date(), TZ) + ' 12:00', TZ, 'yyyyMMdd HH:mm');
+  ultimo.setUTCDate(ultimo.getUTCDate() + cfg.dias);
+  if (d.fecha > fechaTxt_(ultimo, TZ) || inicio.getTime() <= Date.now() + cfg.horasMin * 3600000) return 'fuera_de_rango';
+  const dia = new Date(Date.UTC(+d.fecha.slice(0, 4), +d.fecha.slice(4, 6) - 1, +d.fecha.slice(6, 8))).getUTCDay();
+  return (cfg.sedes[d.sede].horarios[dia] || []).indexOf(d.hora) < 0 ? 'horario' : '';
+}
+function gestionarApartado_(d) {
+  if (typeof d.sesion !== 'string' || !/^[a-f0-9]{32}$/.test(d.sesion) || d.hp) return { ok: false, error: 'invalido' };
+  const props = PropertiesService.getScriptProperties(), clave = APARTADO_PREFIJO + d.sesion;
+  const todos = props.getProperties();
+  // Limpieza acotada a metadatos técnicos vencidos; nunca toca citas ni pacientes.
+  Object.keys(todos).filter(k => k.indexOf(APARTADO_PREFIJO) === 0).forEach(k => {
+    try { if (JSON.parse(todos[k]).vence <= Date.now()) props.deleteProperty(k); } catch (_) { props.deleteProperty(k); }
+  });
+  const anterior = props.getProperty(clave), propio = anterior ? JSON.parse(anterior) : null;
+  const salida = a => ({ ok: true, token: a.token, vence: a.vence, ampliaciones: a.ampliaciones, puedeAmpliar: a.ampliaciones < 10 && a.vence < (a.limite || Infinity), ahora: Date.now() });
+  if (d.accion !== 'apartar') {
+    if (d.accion === 'liberar' && !propio) return { ok: true, liberado: true };
+    if (!propio || propio.token !== d.token) return { ok: false, error: 'apartado_vencido' };
+    if (d.accion === 'liberar') { props.deleteProperty(clave); return { ok: true, liberado: true }; }
+    if (!/^[a-f0-9]{32}$/.test(d.operacion || '')) return { ok: false, error: 'operacion' };
+    if (propio.ultimaAmpliacion === d.operacion) return salida(propio);
+    if (propio.ampliaciones >= 10) return { ok: false, error: 'ampliaciones' };
+    const nuevoVencimiento = Math.min(propio.vence + 300000, propio.limite || Infinity);
+    if (nuevoVencimiento <= propio.vence) return { ok: false, error: 'fuera_de_rango' };
+    propio.vence = nuevoVencimiento; propio.ampliaciones++;
+    propio.ultimaAmpliacion = d.operacion;
+    props.setProperty(clave, JSON.stringify(propio)); return salida(propio);
+  }
+  const cfg = leerConfig_(), error = validarFranja_(cfg, d);
+  if (error) return { ok: false, error: error };
+  if (propio && propio.sede === d.sede && propio.fecha === d.fecha && propio.hora === d.hora) return salida(propio);
+  const otros = apartadosActivos_().filter(a => a.sesion !== d.sesion);
+  const citas = citasDe_(d.sede).filter(c => c.estado !== 'Cancelada' && c.fecha === d.fecha);
+  if (citas.some(c => c.hora === d.hora) || otros.some(a => a.sede === d.sede && a.fecha === d.fecha && a.hora === d.hora)) return { ok: false, error: 'hora_ocupada' };
+  if (citas.length + otros.filter(a => a.sede === d.sede && a.fecha === d.fecha).length >= cfg.maxDia) return { ok: false, error: 'dia_lleno' };
+  if (otros.length >= 150) return { ok: false, error: 'limite' };
+  const cache = CacheService.getScriptCache(), rateKey = 'apartados_' + d.sesion;
+  const intentos = Number(cache.get(rateKey) || 0);
+  if (intentos >= 30) return { ok: false, error: 'limite' };
+  cache.put(rateKey, String(intentos + 1), 600);
+  const limite = Utilities.parseDate(d.fecha + ' ' + d.hora, TZ, 'yyyyMMdd HH:mm').getTime() - cfg.horasMin * 3600000;
+  // No prometer un apartado que sobrepase el cierre de reservas de esa franja.
+  if (limite - Date.now() < 60000) return { ok: false, error: 'fuera_de_rango' };
+  const nuevo = { sesion: d.sesion, token: Utilities.getUuid().replace(/-/g, ''), sede: d.sede, fecha: d.fecha, hora: d.hora, vence: Math.min(Date.now() + 300000, limite), limite: limite, ampliaciones: 0 };
+  props.setProperty(clave, JSON.stringify(nuevo)); return salida(nuevo);
 }
 
 /* ============================== Correos en formato tarjeta ============================== */
@@ -286,6 +356,10 @@ function registrar_(d) {
   const dia = new Date(Date.UTC(y, m - 1, dd)).getUTCDay();
   const franjasDia = sede.horarios[dia] || [];
   if (franjasDia.indexOf(hora) < 0) return { ok: false, error: 'horario' };
+  const propiedad = /^[a-f0-9]{32}$/.test(d.sesion || '') ? APARTADO_PREFIJO + d.sesion : '';
+  const rawApartado = propiedad && PropertiesService.getScriptProperties().getProperty(propiedad);
+  const apartado = rawApartado ? JSON.parse(rawApartado) : null;
+  if (!apartado || apartado.vence <= Date.now() || apartado.token !== d.token || apartado.sede !== d.sede || apartado.fecha !== fecha || apartado.hora !== hora) return { ok: false, error: 'apartado_vencido' };
   // Se ejecuta bajo ScriptLock. No sustituye controles de abuso en el alojamiento.
   const cache = CacheService.getScriptCache(), rateKey = 'intentos_' + celular;
   const intentos = Number(cache.get(rateKey) || 0);
@@ -310,6 +384,9 @@ function registrar_(d) {
   sh.getRange(fila, C.MAIL).setNumberFormat('@');
   // La fecha se guarda a mediodía para que el día no cambie aunque la hoja use otra zona horaria
   sh.getRange(fila, 1, 1, 10).setValues([[id, ahora, sede.nombre, Utilities.parseDate(fecha + ' 12:00', TZ, 'yyyyMMdd HH:mm'), hora, tipo, textoSeguro_(nombre), celular, textoSeguro_(correo), 'Pendiente']]);
+  // Confirmar escritura antes de liberar. Un reintento recupera por ID, aun sin apartado.
+  SpreadsheetApp.flush();
+  PropertiesService.getScriptProperties().deleteProperty(propiedad);
 
   const f = { y: y, m: m, d: dd };
   const cuando = fechaLarga_(y, m, dd) + ' a las ' + hora12_(hora);

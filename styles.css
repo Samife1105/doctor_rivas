@@ -538,6 +538,9 @@ em{font-style:italic}
 .availability{font-size:.875rem;color:var(--mute);margin:12px 0;display:grid;gap:10px}
 .availability .btn{justify-self:start}
 .availability [hidden]{display:none}
+.availability[hidden],.done__btns [hidden]{display:none}
+.hold{padding:16px;border:1px solid var(--mute);border-radius:16px}
+.hold #holdClock{font-variant-numeric:tabular-nums;font-weight:600}
 .day{min-height:44px;aspect-ratio:auto;border-radius:12px}
 .book__panel[aria-busy="true"]{cursor:progress}
 .book__panel :disabled{cursor:not-allowed}

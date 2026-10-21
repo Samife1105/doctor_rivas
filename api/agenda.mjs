@@ -1,5 +1,5 @@
 // El navegador nunca envía datos del paciente en una URL ni contacta Google directamente.
-const DEFAULT_BACKEND = 'https://script.google.com/macros/s/AKfycby4iKyjy3-GCIXOCrQiejxX9NBrWa3mlQ8N2vRJHyUlAiKTXAqHaowxNzO_sWMd5pkD/exec';
+const DEFAULT_BACKEND = 'https://script.google.com/macros/s/AKfycbyb4EgKIxr644LxdZJDIW5sYFsZB5SFewk2pqD_xnojBo_ZjoPlQqDV5QVvljXYeLp3/exec';
 const SEDES = new Set(['yopal', 'aguazul', 'bogota']);
 const TIPOS = new Set(['Valoración inicial', 'Diseño de sonrisa', 'Implantes dentales', 'Ortodoncia invisible']);
 export default async function handler(req, res) {
@@ -32,6 +32,17 @@ export default async function handler(req, res) {
       d = JSON.parse(raw);
     } catch { return answer(400, { ok: false, error: 'invalido' }); }
     if (!d || typeof d !== 'object' || Array.isArray(d) || d.hp) return answer(400, { ok: false, error: 'invalido' });
+    const action = d.accion || 'reservar';
+    if (!['reservar', 'apartar', 'extender', 'liberar'].includes(action)) return answer(400, { ok: false, error: 'accion' });
+    if (typeof d.sesion !== 'string' || !/^[a-f0-9]{32}$/.test(d.sesion) || (action !== 'apartar' && (typeof d.token !== 'string' || !/^[a-f0-9]{32}$/.test(d.token)))) return answer(400, { ok: false, error: 'apartado_vencido' });
+    if (['apartar', 'reservar'].includes(action) && (!SEDES.has(d.sede) || typeof d.fecha !== 'string' || typeof d.hora !== 'string' || !/^\d{8}$/.test(d.fecha) || !/^\d{2}:\d{2}$/.test(d.hora))) return answer(400, { ok: false, error: 'fecha' });
+    let clean = { accion: action, sesion: d.sesion, token: d.token };
+    if (action === 'extender') {
+      if (!/^[a-f0-9]{32}$/.test(d.operacion || '')) return answer(400, { ok: false, error: 'operacion' });
+      clean.operacion = d.operacion;
+    }
+    if (action === 'apartar') Object.assign(clean, { sede: d.sede, fecha: d.fecha, hora: d.hora });
+    if (action === 'reservar') {
     if (!SEDES.has(d.sede)) return answer(400, { ok: false, error: 'sede' });
     if (!TIPOS.has(d.tipo)) return answer(400, { ok: false, error: 'tipo' });
     if (typeof d.nombre !== 'string' || d.nombre.trim().length < 3 || d.nombre.trim().length > 80) return answer(400, { ok: false, error: 'nombre' });
@@ -40,7 +51,9 @@ export default async function handler(req, res) {
     if (!/^\d{8}$/.test(d.fecha) || !/^\d{2}:\d{2}$/.test(d.hora)) return answer(400, { ok: false, error: 'fecha' });
     if (!/^[a-f0-9]{32}$/.test(d.operacion)) return answer(400, { ok: false, error: 'operacion' });
     // Lista explícita: no reenviar claves arbitrarias ni aceptar un destino del cliente.
-    options = { ...options, method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ sede: d.sede, nombre: d.nombre.trim(), celular: d.celular, correo: d.correo, tipo: d.tipo, fecha: d.fecha, hora: d.hora, hp: '', operacion: d.operacion }) };
+    clean = { ...clean, sede: d.sede, nombre: d.nombre.trim(), celular: d.celular, correo: d.correo, tipo: d.tipo, fecha: d.fecha, hora: d.hora, hp: '', operacion: d.operacion };
+    }
+    options = { ...options, method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(clean) };
   } else {
     res.setHeader('Allow', 'GET, POST');
     return answer(405, { ok: false, error: 'metodo' });
@@ -52,11 +65,17 @@ export default async function handler(req, res) {
     if (!body || typeof body.ok !== 'boolean') throw new Error('schema');
     if (!body.ok) return answer(200, { ok: false, error: typeof body.error === 'string' ? body.error : 'servidor' });
     if (req.method === 'POST') {
+      const action = JSON.parse(options.body).accion;
+      if (action === 'liberar') return answer(200, { ok: true, liberado: body.liberado === true });
+      if (action === 'apartar' || action === 'extender') {
+        if (!/^[a-f0-9]{32}$/.test(body.token) || !Number.isFinite(body.vence) || !Number.isInteger(body.ampliaciones)) throw new Error('apartado');
+        return answer(200, { ok: true, token: body.token, vence: body.vence, ampliaciones: body.ampliaciones, puedeAmpliar: body.puedeAmpliar === true, ahora: Date.now() });
+      }
       if (typeof body.id !== 'string' || !body.id) throw new Error('id');
       return answer(200, { ok: true, id: body.id, recuperada: body.recuperada === true, correo: ['enviado', 'fallido', 'no_solicitado'].includes(body.correo) ? body.correo : 'no_comprobado' });
     }
     if (req.query.accion === 'config') {
-      if (body.apiVersion !== 2 || !body.sedes || !Number.isInteger(body.dias) || !Number.isFinite(body.horasMin)) throw new Error('config');
+      if (body.apiVersion !== 3 || !body.apartados || !body.sedes || !Number.isInteger(body.dias) || !Number.isFinite(body.horasMin)) throw new Error('config');
       // Reloj del servidor: no depende del reloj/zona configurados en el teléfono.
       return answer(200, { ...body, ahora: Date.now(), zona: 'America/Bogota' });
     }
